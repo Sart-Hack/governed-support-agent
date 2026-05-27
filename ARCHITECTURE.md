@@ -42,8 +42,42 @@ Two risks from the BUILD-SPEC risk register were de-risked before any deep agent
 
 ---
 
-### Spike 2 — Bifrost in front of 3 MCP mocks
+### Spike 2 — Bifrost as multi-MCP gateway
 
-**Status:** Not yet started. Up next.
+**Status:** PASSED (load-bearing question) on 2026-05-27. Canonical path adopted. Code-mode token-compression end-to-end verification deferred to Phase 2 main work (requires `ANTHROPIC_API_KEY`, which is not yet populated in `.env`).
 
-(Outcome TBD. Goal: confirm Bifrost's code-mode token compression works across multi-MCP routing before committing the "11µs overhead at 5k RPS" pitch on the microsite.)
+**Risk being tested:** BUILD-SPEC risk #8 — Bifrost is newer than Portkey and the "Bifrost in front of 3 MCPs" + code-mode pitch needs to be real. If the gateway couldn't multiplex MCP clients, the fallback was a direct MCP client per server (loses gateway-level observability, central kill-switch, and code-mode).
+
+**Setup:**
+
+- Spike code: `apps/agent/src/spike-mcp-mock-server.ts` — single Node HTTP process exposing three Streamable-HTTP MCP endpoints, one tool each. Stateless mode (fresh `McpServer` + transport per POST, per the SDK's canonical `simpleStatelessStreamableHttp` example).
+- Run script: `pnpm --filter @gsa/agent spike:mcp:server` (binds `0.0.0.0:7001`).
+- Routes:
+  - `POST /mcp/zendesk` → `list_tickets`
+  - `POST /mcp/notion` → `search_docs`
+  - `POST /mcp/hubspot` → `find_account`
+- Bifrost reaches the mock via `http://host.docker.internal:7001/mcp/<svc>`.
+
+**Test sequence (2026-05-27):**
+
+1. Started mock — confirmed `POST /mcp/zendesk` with a JSON-RPC `initialize` request returns HTTP 200 + `event: message data: {...}` SSE frame with the right `serverInfo.name`.
+2. `POST /api/mcp/client` against Bifrost three times (one per service). All returned `{"message":"MCP client connected successfully"}`.
+3. `GET /api/mcp/clients` returned `count: 3` with all three in `state: connected`, each with its declared tool listed in the `tools[]` array — Bifrost successfully discovered the tools across multiple MCP clients.
+4. `POST /v1/mcp/tool/execute` directly returned `"tool '<name>' is not available or not permitted"` for every tool. This is by design: that endpoint expects a prior chat-completion context (the `extra_fields.request_type` echoes `chat_completion`). Tools become "permitted" when the LLM emits a `tool_call` after Bifrost surfaces them in a chat request — the execute endpoint is the back-half of that flow, not a standalone dispatcher.
+5. Attempted the front-half (`POST /v1/chat/completions` with `model: anthropic/claude-haiku-4-5` and `tool_choice: auto`) → failed because no Anthropic provider was registered AND `ANTHROPIC_API_KEY` in `.env` is empty. Provider registered + deleted during the test; key remains unset.
+
+**Discoveries worth keeping:**
+
+- **The MCP TS SDK's `StreamableHTTPServerTransport` is single-use.** Reusing one `McpServer` + transport across requests breaks: the first `initialize` succeeds, every subsequent request returns HTTP 500 with `text/plain` body and no server-side log. The canonical pattern (from `simpleStatelessStreamableHttp.ts`) is: instantiate a fresh `McpServer` + `StreamableHTTPServerTransport` per POST, `await server.connect(transport); await transport.handleRequest(req, res)`, and close both in `res.on("close", ...)`. This is what the spike mock now does.
+- **Bifrost MCP-client names cannot contain hyphens.** `mock-zendesk` is rejected with `Invalid client name: name cannot contain hyphens`. Use underscores (`mock_zendesk`).
+- **Editing a Bifrost MCP client via `PUT /api/mcp/client/{id}` requires the `name` field in the body** even when you only want to change one field — omitting it fails with `name is required for MCP client`.
+- **`host.docker.internal` resolves inside the Bifrost container on Docker Desktop for Mac** — both IPv4 (`192.168.65.254`) and IPv6 are populated. The mock binds `0.0.0.0` and is reachable. (On Linux this requires `extra_hosts: ["host.docker.internal:host-gateway"]` in `docker-compose.yml`, which is currently NOT set — flag for Phase 2 if cross-platform repro matters before then.)
+- **Bifrost's MCP tool execution is LLM-driven, not standalone.** The "are these tools available?" check on `/v1/mcp/tool/execute` depends on the tools having been surfaced in a prior `/v1/chat/completions` call. There is no documented way to invoke an MCP tool directly through Bifrost without going through a chat completion. For Phase 2 testing without burning LLM credits, call the MCP mock directly (bypassing Bifrost) — Bifrost's value is in the LLM-driven path.
+- **Bifrost persists MCP client + provider state in `infra/bifrost/config.db` (SQLite).** The current `infra/bifrost/config.json` only has `{"providers": {}}`. Runtime state (added providers, MCP clients) survives container restart but does NOT survive a fresh clone. Phase 2 needs an init script or canonical `config.json` that pre-registers the 3 MCP clients so cloning works on a new machine.
+
+**Phase-2 implication:** Bifrost as MCP gateway is the canonical path. The 3 MCP mocks already used here (`mock_zendesk`, `mock_notion`, `mock_hubspot`) are good stand-ins for the demo scenario domain; Phase 2 main work can grow them into the real mocks. Two follow-ups before claiming the "11µs overhead at 5k RPS" pitch on the microsite:
+
+1. Populate `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` in `.env`, then end-to-end test `POST /v1/chat/completions` → LLM emits `tool_call` → `POST /v1/mcp/tool/execute` succeeds. This proves code-mode is live (or surfaces a real bug to fix).
+2. Decide where the canonical MCP client config lives: a `config.json` blob shipped in the repo, or an idempotent `scripts/bootstrap-bifrost.sh` that POSTs the 3 clients on first boot. Either way, fresh-clone must work without manual API calls.
+
+The spike mock and registration setup can stay registered in the local Bifrost SQLite — Phase 2 main work absorbs them.

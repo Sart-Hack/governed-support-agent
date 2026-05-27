@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "spike:mastra:start": "tsx --env-file=../../.env src/spike-suspend-resume.ts start",
     "spike:mastra:resume": "tsx --env-file=../../.env src/spike-suspend-resume.ts resume",
+    "spike:mcp:server": "tsx --env-file=../../.env src/spike-mcp-mock-server.ts",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -24,6 +25,7 @@
   "dependencies": {
     "@mastra/core": "^1.37.0",
     "@mastra/pg": "^1.11.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.23.8"
   }
 }
