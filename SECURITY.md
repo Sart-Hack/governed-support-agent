@@ -4,7 +4,7 @@ This is a demo repository for a solo AI consulting practice. The agent runs agai
 
 ## Reporting a vulnerability
 
-Email **abhishek21k15@gmail.com** with `[gsa-security]` in the subject. Please describe the vulnerability, the reproduction steps, and the impact. I aim to acknowledge within 48 hours and to publish a fix or mitigation within 30 days for confirmed issues.
+Email **sarthakgupta124@gmail.com** with `[gsa-security]` in the subject. Please describe the vulnerability, the reproduction steps, and the impact. I aim to acknowledge within 48 hours and to publish a fix or mitigation within 30 days for confirmed issues.
 
 No bounty is offered. With your permission, fixed issues will be credited in the changelog.
 

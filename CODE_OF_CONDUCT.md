@@ -9,6 +9,6 @@ By participating in this project, you agree to abide by its terms.
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behaviour may be reported to **abhishek21k15@gmail.com** with `[gsa-coc]` in the subject. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behaviour may be reported to **sarthakgupta124@gmail.com** with `[gsa-coc]` in the subject. All complaints will be reviewed and investigated promptly and fairly.
 
 The project maintainer is obligated to respect the privacy and security of the reporter.
