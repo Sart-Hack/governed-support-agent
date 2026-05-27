@@ -41,21 +41,30 @@ From `trust-system.md` §1 and Cedar policy 06:
 
 Non-negotiable. If a future requirement seems to need bypassing these, raise it for discussion — don't silently allow.
 
-## Day-1 priorities (Phase 1, ~16h)
+## Phase 1 status — complete (2026-05-27)
 
-Per BUILD-SPEC.md hour budget table:
-- Repo scaffold: pnpm workspaces + Turborepo, strict TS, `tsx` dev / `tsup` build
-- `docker-compose.yml` with Langfuse v3 (≥3.95) + Postgres + Bifrost + MCP mocks
-- Geist tokens + Next.js 15 App Router shell
-- CI skeleton (`.github/workflows/ci.yml`) — lint + typecheck + unit, target ~3min
-- Hello-world green
+Foundation shipped, all per-milestone verification gates green, CI green on GitHub. 7 commits on `origin/main`. See [README.md](./README.md#status) for the milestone table.
 
-## Phase-2-hour-1 spikes (de-risk before deep commitment)
+What's runnable now:
+- `pnpm --filter @gsa/microsite dev` → microsite hero on http://localhost:3000
+- `pnpm --filter @gsa/agent dev` → CLI prints the ready string
+- `pnpm stack:up` + `pnpm stack:verify` → Langfuse v3.175 on :3001, Bifrost on :8080, MinIO console on :9091, postgres on :5432 (incl. pre-created `mastra` DB for HITL), clickhouse, redis
 
-Two risks (register #1 and #8) need de-risking before more agent-core hours go in:
+What's not yet (Phase 2-3 work): Cedar policies, MCP servers, Mastra workflow, `agent-shield` package, microsite pages beyond `/`, real Langfuse traces.
 
-1. **Mastra v2 `.suspend/.resume` against Postgres.** Single workflow, single suspend, restart docker-compose, confirm resume works. Fallback if broken: hand-rolled checkpoint table with explicit pause/resume HTTP endpoints.
-2. **Bifrost in front of the three MCP mocks.** Confirm code-mode token compression works across multi-MCP. Fallback if broken: direct MCP client without gateway (loses code-mode, preserves demo).
+Non-BUILD-SPEC choices locked during Phase 1 (don't relitigate):
+- **Linter:** Biome 1.9 (single binary, fast)
+- **Test runner:** Vitest 2.1 workspace mode
+- **Tailwind:** v4 (`4.1.11` — 4.0.0 had a scanner version mismatch)
+- **Postgres serves double duty:** Langfuse metadata + Mastra HITL checkpoints (separate logical DBs)
+- **Healthcheck quirks** worth remembering: Bifrost needs GET not HEAD, langfuse-web inside-container must use `$HOSTNAME` not `localhost`, MinIO has curl not wget
+
+## Phase-2-hour-1 spikes (next session starts here)
+
+Before any deep agent-core work, two risks from BUILD-SPEC risk register need de-risking:
+
+1. **Mastra v2 `.suspend/.resume` against Postgres** (risk #1). Single workflow, single suspend, `docker compose restart postgres`, confirm `.resume()` works. Connection: `postgresql://postgres:postgres@localhost:5432/mastra` (`MASTRA_DATABASE_URL` in `.env`). Fallback if broken: hand-rolled checkpoint table with explicit pause/resume HTTP endpoints.
+2. **Bifrost in front of three MCP mocks** (risk #8). Confirm code-mode token compression works across multi-MCP. Bifrost is on :8080 with empty providers — Phase 2 wires the providers via `infra/bifrost/config.json` + env-var key references. Fallback if broken: direct MCP client without gateway (loses code-mode, preserves demo).
 
 Document spike outcomes in `ARCHITECTURE.md` once that file lands.
 
