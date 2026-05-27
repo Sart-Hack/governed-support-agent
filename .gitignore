@@ -34,3 +34,7 @@ langfuse-data
 clickhouse-data
 minio-data
 redis-data
+
+# Bifrost runtime state (bind-mounted from infra/bifrost/)
+infra/bifrost/config.db*
+infra/bifrost/logs.db*

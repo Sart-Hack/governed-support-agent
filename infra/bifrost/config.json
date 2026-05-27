@@ -1,0 +1,4 @@
+{
+  "providers": {},
+  "_comment": "Phase 1: empty providers. Phase 2 fills in openai/anthropic with env.OPENAI_API_KEY / env.ANTHROPIC_API_KEY references and routes per-MCP. The Bifrost web UI at http://localhost:8080/ can also configure providers interactively."
+}

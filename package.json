@@ -18,6 +18,11 @@
     "format": "biome format --write .",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "stack:up": "docker compose up -d",
+    "stack:down": "docker compose down",
+    "stack:wipe": "docker compose down -v",
+    "stack:verify": "bash scripts/verify-docker.sh",
+    "stack:logs": "docker compose logs -f",
     "clean": "turbo run clean && rm -rf node_modules .turbo"
   },
   "devDependencies": {
