@@ -123,6 +123,112 @@ importers:
         specifier: 2.1.8
         version: 2.1.8(@types/node@22.10.5)(lightningcss@1.32.0)
 
+  packages/mcp-server-base:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(zod@3.25.76)
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: 22.10.5
+        version: 22.10.5
+      tsup:
+        specifier: 8.3.5
+        version: 8.3.5(jiti@2.7.0)(postcss@8.5.15)(tsx@4.19.2)(typescript@5.7.2)
+      typescript:
+        specifier: 5.7.2
+        version: 5.7.2
+      vitest:
+        specifier: 2.1.8
+        version: 2.1.8(@types/node@22.10.5)(lightningcss@1.32.0)
+
+  packages/mcp-server-hubspot:
+    dependencies:
+      '@gsa/fixtures':
+        specifier: workspace:*
+        version: link:../fixtures
+      '@gsa/mcp-server-base':
+        specifier: workspace:*
+        version: link:../mcp-server-base
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: 22.10.5
+        version: 22.10.5
+      tsup:
+        specifier: 8.3.5
+        version: 8.3.5(jiti@2.7.0)(postcss@8.5.15)(tsx@4.19.2)(typescript@5.7.2)
+      tsx:
+        specifier: 4.19.2
+        version: 4.19.2
+      typescript:
+        specifier: 5.7.2
+        version: 5.7.2
+      vitest:
+        specifier: 2.1.8
+        version: 2.1.8(@types/node@22.10.5)(lightningcss@1.32.0)
+
+  packages/mcp-server-notion:
+    dependencies:
+      '@gsa/fixtures':
+        specifier: workspace:*
+        version: link:../fixtures
+      '@gsa/mcp-server-base':
+        specifier: workspace:*
+        version: link:../mcp-server-base
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: 22.10.5
+        version: 22.10.5
+      tsup:
+        specifier: 8.3.5
+        version: 8.3.5(jiti@2.7.0)(postcss@8.5.15)(tsx@4.19.2)(typescript@5.7.2)
+      tsx:
+        specifier: 4.19.2
+        version: 4.19.2
+      typescript:
+        specifier: 5.7.2
+        version: 5.7.2
+      vitest:
+        specifier: 2.1.8
+        version: 2.1.8(@types/node@22.10.5)(lightningcss@1.32.0)
+
+  packages/mcp-server-zendesk:
+    dependencies:
+      '@gsa/fixtures':
+        specifier: workspace:*
+        version: link:../fixtures
+      '@gsa/mcp-server-base':
+        specifier: workspace:*
+        version: link:../mcp-server-base
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: 22.10.5
+        version: 22.10.5
+      tsup:
+        specifier: 8.3.5
+        version: 8.3.5(jiti@2.7.0)(postcss@8.5.15)(tsx@4.19.2)(typescript@5.7.2)
+      tsx:
+        specifier: 4.19.2
+        version: 4.19.2
+      typescript:
+        specifier: 5.7.2
+        version: 5.7.2
+      vitest:
+        specifier: 2.1.8
+        version: 2.1.8(@types/node@22.10.5)(lightningcss@1.32.0)
+
   packages/policies:
     devDependencies:
       '@sarthak/agent-shield':
