@@ -25,7 +25,7 @@
     "stack:verify": "bash scripts/verify-docker.sh",
     "stack:bootstrap": "node scripts/bootstrap-bifrost.mjs",
     "stack:logs": "docker compose logs -f",
-    "mcp:servers": "concurrently -n zendesk,notion,hubspot -c blue,magenta,cyan \"pnpm --filter @gsa/mcp-server-zendesk dev\" \"pnpm --filter @gsa/mcp-server-notion dev\" \"pnpm --filter @gsa/mcp-server-hubspot dev\"",
+    "mcp:servers": "concurrently -n zendesk,notion,hubspot,github -c blue,magenta,cyan,green \"pnpm --filter @gsa/mcp-server-zendesk dev\" \"pnpm --filter @gsa/mcp-server-notion dev\" \"pnpm --filter @gsa/mcp-server-hubspot dev\" \"pnpm --filter @gsa/mcp-server-github dev\"",
     "clean": "turbo run clean && rm -rf node_modules .turbo"
   },
   "devDependencies": {

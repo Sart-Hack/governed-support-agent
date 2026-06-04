@@ -34,6 +34,10 @@ const CLIENTS = [
     name: "mock_hubspot",
     url: process.env.MCP_HUBSPOT_GATEWAY_URL ?? "http://host.docker.internal:7004/mcp",
   },
+  {
+    name: "mcp_github",
+    url: process.env.MCP_GITHUB_GATEWAY_URL ?? "http://host.docker.internal:7005/mcp",
+  },
 ];
 
 const DESIRED_NAMES = new Set(CLIENTS.map((c) => c.name));

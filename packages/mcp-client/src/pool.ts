@@ -20,18 +20,29 @@ export class McpClientPool {
   private constructor(private readonly clients: Map<string, GovernedMcpClient>) {}
 
   static async connect(config: McpClientPoolConfig): Promise<McpClientPool> {
-    const entries = await Promise.all(
+    const settled = await Promise.all(
       config.targets.map(async (target) => {
-        const client = await connectMcpClient({
-          target,
-          scopeCheck: config.scopeCheck,
-          audit: config.audit,
-          runId: config.runId,
-        });
-        return [target.name, client] as const;
+        try {
+          const client = await connectMcpClient({
+            target,
+            scopeCheck: config.scopeCheck,
+            audit: config.audit,
+            runId: config.runId,
+          });
+          return [target.name, client] as const;
+        } catch (err) {
+          // A single server being down should not break the whole agent — skip
+          // it with a warning. Calling its tools later throws a clear error.
+          process.stderr.write(
+            `[mcp-client] could not connect "${target.name}" at ${target.url}: ${String(err)}\n`,
+          );
+          return null;
+        }
       }),
     );
-    return new McpClientPool(new Map(entries));
+    return new McpClientPool(
+      new Map(settled.filter((e): e is NonNullable<typeof e> => e !== null)),
+    );
   }
 
   /** The governed client for a server, by logical name. */
