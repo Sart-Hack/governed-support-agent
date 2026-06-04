@@ -11,6 +11,8 @@
     "spike:mastra:resume": "tsx --env-file=../../.env src/spike-suspend-resume.ts resume",
     "spike:mcp:server": "tsx --env-file=../../.env src/spike-mcp-mock-server.ts",
     "demo": "tsx --env-file=../../.env src/demo.ts",
+    "scenario": "tsx --env-file=../../.env src/scenario.ts",
+    "scenario:resume": "tsx --env-file=../../.env src/scenario.ts resume",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

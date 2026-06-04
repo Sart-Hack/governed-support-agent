@@ -6,6 +6,7 @@ import {
   type AgentDeps,
   type RunState,
   type ToolGateway,
+  executeStep,
   policyCheckStep,
   runSupportOps,
 } from "./steps.js";
@@ -108,6 +109,43 @@ describe("support-ops refusal", () => {
     expect(checked.policy?.refused).toBe(true);
     expect(checked.policy?.judgements[0]?.disposition).toBe("refuse");
     expect(checked.policy?.judgements[0]?.asiIds.some((a) => a.includes("ASI10"))).toBe(true);
+  });
+});
+
+describe("support-ops reject → revise branch (scenario 3)", () => {
+  it("does not send the customer reply on rejection and leaves an internal revise note", async () => {
+    const d = deps(new ScriptedChatModel([]));
+    const state: RunState = {
+      runId: "r4",
+      ticketId: "TCK-3",
+      plan: {
+        summary: "reply to customer",
+        actions: [
+          {
+            server: "zendesk",
+            tool: "replyPublic",
+            args: { ticketId: "TCK-3", text: "fixed" },
+            customerFacing: true,
+          },
+        ],
+      },
+      policy: {
+        judgements: [
+          {
+            tool: "replyPublic",
+            disposition: "needs-approval",
+            reason: "policy 05",
+            asiIds: ["ASI03"],
+          },
+        ],
+        refused: false,
+      },
+      approval: { state: "rejected" },
+    };
+    const out = await d.shield.wrap(executeStep(d))(state, ctx);
+    expect(out.execution?.revised).toBe(true);
+    expect(out.execution?.results.map((r) => r.tool)).toEqual(["replyInternal"]);
+    expect(d.gateway.calls.map((c) => c.tool)).toEqual(["replyInternal"]);
   });
 });
 

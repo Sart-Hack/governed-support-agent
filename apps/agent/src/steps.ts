@@ -2,6 +2,7 @@ import type { CallResult, McpClientPool, ToolDescriptor } from "@gsa/mcp-client"
 import { type Shield, type StepContext, formatDecision } from "@sarthak/agent-shield";
 import { type RunContext, toPolicyRequest } from "./governance.js";
 import type { ChatModel, CompletionResult, ToolSchema } from "./llm/types.js";
+import type { ApprovalChannel } from "./slack/approval.js";
 
 /** The slice of McpClientPool the steps need; lets tests pass a stub. */
 export interface ToolGateway {
@@ -13,6 +14,8 @@ export interface AgentDeps {
   shield: Shield;
   gateway: ToolGateway | McpClientPool;
   llm: ChatModel;
+  /** Where approval requests are posted (Slack or the console stand-in). */
+  approvalChannel?: ApprovalChannel;
 }
 
 export interface Classification {
@@ -46,6 +49,8 @@ export interface ApprovalOutcome {
 }
 export interface ExecutionOutcome {
   results: { tool: string; ok: boolean }[];
+  /** True when a rejection routed the run into the revise branch. */
+  revised?: boolean;
 }
 
 export interface RunState {
@@ -148,8 +153,9 @@ export function classifyStep(deps: AgentDeps) {
 
 const PLAN_SYSTEM =
   "You are a support-ops agent. Using the ticket and the knowledge-base hits, decide how to resolve it. " +
-  "Prefer resolving internally: draft an internal note (replyInternal) summarizing the answer for the support team. " +
-  "Only use replyPublic if the customer must be contacted directly. Call the tools you intend to take.";
+  "If the ticket explicitly asks for a reply, follow-up, or email to the customer, propose a customer-facing reply with replyPublic. " +
+  "Otherwise resolve internally by drafting an internal note (replyInternal) for the support team. " +
+  "Call the tools you intend to take.";
 
 const ACTION_TOOLS: ToolSchema[] = [
   {
@@ -264,6 +270,18 @@ export function executeStep(deps: AgentDeps) {
     if (state.policy?.refused) {
       return { ...state, execution: { results } };
     }
+
+    // Reject branch: a human declined the customer-facing action. Do not send
+    // it; revise by leaving an internal note so the ticket stays actionable.
+    if (state.approval?.state === "rejected") {
+      const res = await governedCall(deps, ctx, "zendesk", "replyInternal", {
+        ticketId: state.ticketId,
+        text: "Customer-facing reply was rejected on approval. Needs revision before any customer contact.",
+      });
+      results.push({ tool: "replyInternal", ok: !res.isError });
+      return { ...state, execution: { results, revised: true } };
+    }
+
     const approved = state.approval?.state === "approved";
     const judgementByTool = new Map(state.policy?.judgements.map((j) => [j.tool, j]) ?? []);
 
