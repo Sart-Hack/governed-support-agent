@@ -31,7 +31,7 @@ async function build(runId: string) {
 async function start(ticketId: string): Promise<void> {
   const runId = randomUUID();
   console.log(`\n▸ scenario run: ticket=${ticketId} runId=${runId}\n`);
-  const { tracing, gov, mastra } = await build(runId);
+  const { tracing, memory, gov, mastra } = await build(runId);
   try {
     const run = await mastra.getWorkflow("supportOps").createRun({ runId });
     const result = await run.start({ inputData: { runId, ticketId } });
@@ -40,6 +40,9 @@ async function start(ticketId: string): Promise<void> {
       console.log("   The run is checkpointed in Postgres and survives a restart.");
     } else if (result.status === "success") {
       printOutcome(result.result as RunState);
+    } else if (memory.list().some((e) => e.kind === "kill.triggered")) {
+      console.log("\n🛑 halted by kill-switch before completing. Audit recorded kill.triggered.");
+      console.log("   Reset with: pnpm --filter @gsa/agent kill off");
     } else {
       console.log(`status=${result.status}`);
       process.exitCode = 1;

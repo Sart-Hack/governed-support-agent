@@ -13,6 +13,8 @@
     "demo": "tsx --env-file=../../.env src/demo.ts",
     "scenario": "tsx --env-file=../../.env src/scenario.ts",
     "scenario:resume": "tsx --env-file=../../.env src/scenario.ts resume",
+    "scenario2": "tsx --env-file=../../.env src/scenario2.ts",
+    "kill": "tsx --env-file=../../.env src/kill.ts",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -20,6 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "22.10.5",
+    "@types/pg": "8.11.10",
     "tsup": "8.3.5",
     "tsx": "4.19.2",
     "typescript": "5.7.2",
@@ -34,6 +37,7 @@
     "@mastra/pg": "^1.11.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@sarthak/agent-shield": "workspace:*",
+    "pg": "^8.13.1",
     "zod": "^3.23.8"
   }
 }

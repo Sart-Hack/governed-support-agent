@@ -12,6 +12,7 @@ import {
   loadPolicies,
   shield,
 } from "@sarthak/agent-shield";
+import { type ManagedKillSwitch, createKillSwitch } from "./kill-switch.js";
 
 // The demo principal: the agent acts as a SupportLead in tenant-A. Cedar
 // policies key off this — SupportLead may read/triage/internal-reply, but
@@ -119,12 +120,15 @@ export interface BuildGovernanceOptions {
   audit?: AuditSink;
   /** Cost ceiling for the circuit breaker. Defaults to $0.50 (BUILD-SPEC). */
   costCeilingUsd?: number;
+  /** Kill-switch. Defaults to NoopKillSwitch (offline/tests); buildGovernance uses Postgres. */
+  killSwitch?: ManagedKillSwitch;
 }
 
 export interface ShieldBundle {
   shield: Shield;
   audit: AuditSink;
   scopeCheck: GrantedScopeCheck;
+  killSwitch: ManagedKillSwitch;
 }
 
 /**
@@ -141,7 +145,7 @@ export function buildShield(opts: BuildGovernanceOptions = {}): ShieldBundle {
 
   const audit = opts.audit ?? new InMemoryAuditSink();
   const scopeCheck = new GrantedScopeCheck(AGENT_SCOPES);
-  const killSwitch = new NoopKillSwitch();
+  const killSwitch = opts.killSwitch ?? new NoopKillSwitch();
   const breaker = createBreaker({
     costCeilingUsd: opts.costCeilingUsd ?? 0.5,
     duplicateToolCallLimit: 3,
@@ -151,16 +155,18 @@ export function buildShield(opts: BuildGovernanceOptions = {}): ShieldBundle {
     shield: shield({ policies, audit, killSwitch, scopeCheck, breaker }),
     audit,
     scopeCheck,
+    killSwitch,
   };
 }
 
 /**
  * Assemble the full governance layer: the shield plus a connected MCP client
- * pool sharing the same scope-check and audit sink. This is `shield({...})`
- * from the spec, ready to drive the workflow.
+ * pool sharing the same scope-check and audit sink, with a Postgres-backed
+ * kill-switch. This is `shield({...})` from the spec, ready to drive the workflow.
  */
 export async function buildGovernance(opts: BuildGovernanceOptions = {}): Promise<Governance> {
-  const { shield: theShield, audit, scopeCheck } = buildShield(opts);
+  const killSwitch = opts.killSwitch ?? createKillSwitch();
+  const { shield: theShield, audit, scopeCheck } = buildShield({ ...opts, killSwitch });
   const pool = await McpClientPool.connect({
     targets: defaultMcpTargets(),
     scopeCheck,
@@ -172,6 +178,9 @@ export async function buildGovernance(opts: BuildGovernanceOptions = {}): Promis
     shield: theShield,
     pool,
     audit,
-    close: () => pool.closeAll(),
+    close: async () => {
+      await pool.closeAll();
+      await killSwitch.close?.();
+    },
   };
 }
