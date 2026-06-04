@@ -26,11 +26,7 @@ export async function runHttp(def: ServerDef, opts: HttpOptions): Promise<HttpHa
       respondNotFound(res, path);
       return;
     }
-    if (
-      req.method === "GET" &&
-      url.pathname === path &&
-      req.headers.accept?.includes("text/html")
-    ) {
+    if (req.method === "GET" && req.headers.accept?.includes("text/html")) {
       respondLanding(res, def, path);
       return;
     }
@@ -49,10 +45,8 @@ export async function runHttp(def: ServerDef, opts: HttpOptions): Promise<HttpHa
     httpServer.listen(opts.port, host, () => resolve());
   });
 
-  const actualPort =
-    typeof httpServer.address() === "object" && httpServer.address() !== null
-      ? (httpServer.address() as { port: number }).port
-      : opts.port;
+  const address = httpServer.address();
+  const actualPort = typeof address === "object" && address !== null ? address.port : opts.port;
 
   process.stderr.write(
     `[${def.name}] http transport ready on http://${host}:${actualPort}${path}\n`,

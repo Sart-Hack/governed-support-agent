@@ -17,10 +17,7 @@ export function formatDecision(decision: PolicyDecision): FormattedDecision {
   const asiIds = uniqueAsi(decision.reasons);
 
   if (decision.decision === "deny" && forbids.length > 0) {
-    const primary = forbids[0];
-    if (!primary) {
-      return makeUnreachableDeny(subject, verb, object);
-    }
+    const primary = forbids[0]!;
     return {
       summary: `Denied: ${subject} ${verb} on ${object} — forbidden by policy ${primary.policyId}${describe(primary)}.`,
       reasonLines: forbids.map((r) => reasonLine(r)),
@@ -37,14 +34,7 @@ export function formatDecision(decision: PolicyDecision): FormattedDecision {
   }
 
   if (permits.length > 0) {
-    const primary = permits[0];
-    if (!primary) {
-      return {
-        summary: `Allowed: ${subject} ${verb} on ${object}.`,
-        reasonLines: [],
-        asiIds,
-      };
-    }
+    const primary = permits[0]!;
     return {
       summary: `Allowed: ${subject} ${verb} on ${object} — policy ${primary.policyId}${describe(primary)}.`,
       reasonLines: permits.map((r) => reasonLine(r)),
@@ -59,18 +49,19 @@ export function formatDecision(decision: PolicyDecision): FormattedDecision {
   };
 }
 
+/** `asi — description` from a reason's annotations, dropping whichever is absent. */
+function annotationTail(reason: PolicyReason): string {
+  return [reason.annotations.asi, reason.annotations.description].filter(Boolean).join(" — ");
+}
+
 function describe(reason: PolicyReason): string {
-  const parts: string[] = [];
-  if (reason.annotations.asi) parts.push(reason.annotations.asi);
-  if (reason.annotations.description) parts.push(reason.annotations.description);
-  return parts.length > 0 ? ` (${parts.join(" — ")})` : "";
+  const tail = annotationTail(reason);
+  return tail ? ` (${tail})` : "";
 }
 
 function reasonLine(reason: PolicyReason): string {
   const tag = reason.effect === "forbid" ? "FORBID" : "PERMIT";
-  const desc = reason.annotations.description ?? "";
-  const asi = reason.annotations.asi ?? "";
-  const tail = [asi, desc].filter(Boolean).join(" — ");
+  const tail = annotationTail(reason);
   return tail ? `[${tag}] ${reason.policyId}: ${tail}` : `[${tag}] ${reason.policyId}`;
 }
 
@@ -80,12 +71,4 @@ function uniqueAsi(reasons: PolicyReason[]): string[] {
     if (r.annotations.asi) seen.add(r.annotations.asi);
   }
   return Array.from(seen);
-}
-
-function makeUnreachableDeny(subject: string, verb: string, object: string): FormattedDecision {
-  return {
-    summary: `Denied: ${subject} ${verb} on ${object}.`,
-    reasonLines: [],
-    asiIds: [],
-  };
 }

@@ -1,5 +1,5 @@
 import { HUBSPOT_ACCOUNTS, type HubspotAccount } from "@gsa/fixtures";
-import type { McpToolDef } from "@gsa/mcp-server-base";
+import { type McpToolDef, errorResult, notFound, ok } from "@gsa/mcp-server-base";
 import { z } from "zod";
 
 export interface HubspotState {
@@ -14,28 +14,7 @@ export function createState(): HubspotState {
   return { accounts, deleteAttempts: [] };
 }
 
-function ok(payload: unknown) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(payload) }] };
-}
-
-function notFound(message: string) {
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify({ error: message }) }],
-    isError: true,
-  };
-}
-
-function forbidden(message: string) {
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify({ error: message, code: "forbidden_at_server" }),
-      },
-    ],
-    isError: true,
-  };
-}
+const forbidden = (message: string) => errorResult(message, { code: "forbidden_at_server" });
 
 export function tools(state: HubspotState): McpToolDef[] {
   const getAccount: McpToolDef = {

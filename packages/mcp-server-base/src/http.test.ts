@@ -1,3 +1,4 @@
+import { REQUIRED_SCOPES_META_KEY } from "@sarthak/agent-shield";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { runHttp } from "./http.js";
@@ -71,7 +72,7 @@ describe("mcp-server-base http transport", () => {
       };
       expect(listBody.result.tools.map((t) => t.name)).toContain("echo");
       const echo = listBody.result.tools.find((t) => t.name === "echo");
-      expect(echo?._meta?.["agent-shield/requiredScopes"]).toEqual(["test:read"]);
+      expect(echo?._meta?.[REQUIRED_SCOPES_META_KEY]).toEqual(["test:read"]);
     } finally {
       await handle.close();
     }

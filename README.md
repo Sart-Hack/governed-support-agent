@@ -57,10 +57,18 @@ Stack control:
 ```bash
 pnpm stack:up        # start all services
 pnpm stack:verify    # health-probe each
+pnpm stack:bootstrap # register the 3 mock MCP servers as Bifrost clients (idempotent)
 pnpm stack:logs      # follow logs
 pnpm stack:down      # stop, keep volumes
 pnpm stack:wipe      # stop and delete volumes
+
+pnpm mcp:servers     # run the 3 mock MCP servers (zendesk 7002, notion 7003, hubspot 7004)
 ```
+
+The MCP servers run as host processes; Bifrost (in Docker) reaches them via
+`host.docker.internal`. Start them with `pnpm mcp:servers`, then `pnpm stack:bootstrap`
+registers them with the gateway. Bootstrap is idempotent: it reconciles to a known
+state every run, so a fresh clone needs only `pnpm stack:up && pnpm stack:bootstrap`.
 
 ## Local CI parity
 

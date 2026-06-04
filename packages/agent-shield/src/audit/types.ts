@@ -7,6 +7,8 @@ export type AuditEventKind =
   | "policy.decision"
   | "tool.call"
   | "tool.result"
+  | "scope.granted"
+  | "scope.denied"
   | "approval.requested"
   | "approval.resolved"
   | "kill.triggered"

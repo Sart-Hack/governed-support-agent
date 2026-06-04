@@ -1,5 +1,5 @@
 import { NOTION_PAGES, type NotionPage, type NotionTag } from "@gsa/fixtures";
-import type { McpToolDef } from "@gsa/mcp-server-base";
+import { type McpToolDef, notFound, ok } from "@gsa/mcp-server-base";
 import { z } from "zod";
 
 export interface NotionState {
@@ -10,17 +10,6 @@ export function createState(): NotionState {
   const pages = new Map<string, NotionPage>();
   for (const p of NOTION_PAGES) pages.set(p.id, p);
   return { pages };
-}
-
-function ok(payload: unknown) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(payload) }] };
-}
-
-function notFound(message: string) {
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify({ error: message }) }],
-    isError: true,
-  };
 }
 
 export function tools(state: NotionState): McpToolDef[] {

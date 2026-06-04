@@ -197,6 +197,10 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     volumes:
       - ./infra/bifrost:/app/data
+    # host.docker.internal is automatic on Docker Desktop (Mac/Windows); on Linux
+    # it must be mapped explicitly so Bifrost can reach the host-process MCP servers.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ || exit 1"]
       interval: 10s

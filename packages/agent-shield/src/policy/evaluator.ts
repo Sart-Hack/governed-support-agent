@@ -33,16 +33,36 @@ export function loadPolicies(input: { id: string; text: string }[]): LoadResult 
   return { policies, errors };
 }
 
+interface PolicyIndex {
+  byId: Map<string, LoadedPolicy>;
+  staticPolicies: Record<string, string>;
+}
+
+// The policy set is immutable for a Shield's lifetime, so the id-lookup map and
+// the Cedar staticPolicies object are identical on every authorization. Memoize
+// them per policies-array identity rather than rebuilding on each decision.
+const indexCache = new WeakMap<LoadedPolicy[], PolicyIndex>();
+
+function indexFor(policies: LoadedPolicy[]): PolicyIndex {
+  let index = indexCache.get(policies);
+  if (!index) {
+    const byId = new Map<string, LoadedPolicy>();
+    const staticPolicies: Record<string, string> = {};
+    for (const p of policies) {
+      byId.set(p.id, p);
+      staticPolicies[p.id] = p.text;
+    }
+    index = { byId, staticPolicies };
+    indexCache.set(policies, index);
+  }
+  return index;
+}
+
 export function evaluate(
   policies: LoadedPolicy[],
   request: PolicyEvaluationRequest,
 ): PolicyDecision {
-  const byId = new Map<string, LoadedPolicy>();
-  const staticPolicies: Record<string, string> = {};
-  for (const p of policies) {
-    byId.set(p.id, p);
-    staticPolicies[p.id] = p.text;
-  }
+  const { byId, staticPolicies } = indexFor(policies);
 
   const answer = cedar.isAuthorized({
     principal: request.principal,
@@ -62,18 +82,10 @@ export function evaluate(
     };
   }
 
-  const reasons: PolicyReason[] = answer.response.diagnostics.reason
-    .map((pid) => {
-      const p = byId.get(pid);
-      if (!p) return null;
-      const reason: PolicyReason = {
-        policyId: pid,
-        effect: p.effect,
-        annotations: p.annotations,
-      };
-      return reason;
-    })
-    .filter((r): r is PolicyReason => r !== null);
+  const reasons: PolicyReason[] = answer.response.diagnostics.reason.flatMap((pid) => {
+    const p = byId.get(pid);
+    return p ? [{ policyId: pid, effect: p.effect, annotations: p.annotations }] : [];
+  });
 
   const errors: PolicyEvaluationError[] = answer.response.diagnostics.errors.map((e) => ({
     policyId: e.policyId,
@@ -89,12 +101,7 @@ export function evaluate(
 }
 
 function normalizeAnnotations(raw: Record<string, string> | undefined): PolicyAnnotations {
-  if (!raw) return {};
-  const out: PolicyAnnotations = {};
-  for (const [k, v] of Object.entries(raw)) {
-    out[k] = v;
-  }
-  return out;
+  return raw ? { ...raw } : {};
 }
 
 function toCedarEntities(entities: Entity[]): cedar.Entities {

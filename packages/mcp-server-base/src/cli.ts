@@ -40,7 +40,5 @@ export async function runFromArgv(def: ServerDef, opts: RunFromArgvOptions): Pro
 
 function argFor(name: string, argv: string[]): string | undefined {
   const i = argv.indexOf(name);
-  if (i === -1) return undefined;
-  const v = argv[i + 1];
-  return v;
+  return i === -1 ? undefined : argv[i + 1];
 }

@@ -1,5 +1,5 @@
 import { TICKETS, type Tenant, type ZendeskTicket } from "@gsa/fixtures";
-import type { McpToolDef } from "@gsa/mcp-server-base";
+import { type McpToolDef, notFound, ok } from "@gsa/mcp-server-base";
 import { z } from "zod";
 
 interface ReplyEvent {
@@ -25,17 +25,6 @@ export function createState(): ZendeskState {
   const tickets = new Map<string, ZendeskTicket>();
   for (const t of TICKETS) tickets.set(t.id, { ...t });
   return { tickets, replies: [], stateChanges: [] };
-}
-
-function ok(payload: unknown) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(payload) }] };
-}
-
-function notFound(message: string) {
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify({ error: message }) }],
-    isError: true,
-  };
 }
 
 export function tools(state: ZendeskState): McpToolDef[] {

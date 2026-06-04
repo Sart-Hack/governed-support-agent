@@ -22,11 +22,14 @@
     "stack:down": "docker compose down",
     "stack:wipe": "docker compose down -v",
     "stack:verify": "bash scripts/verify-docker.sh",
+    "stack:bootstrap": "node scripts/bootstrap-bifrost.mjs",
     "stack:logs": "docker compose logs -f",
+    "mcp:servers": "concurrently -n zendesk,notion,hubspot -c blue,magenta,cyan \"pnpm --filter @gsa/mcp-server-zendesk dev\" \"pnpm --filter @gsa/mcp-server-notion dev\" \"pnpm --filter @gsa/mcp-server-hubspot dev\"",
     "clean": "turbo run clean && rm -rf node_modules .turbo"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
+    "concurrently": "9.1.2",
     "turbo": "2.3.3",
     "typescript": "5.7.2",
     "vitest": "2.1.8"

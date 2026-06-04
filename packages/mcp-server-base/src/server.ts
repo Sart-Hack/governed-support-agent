@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { REQUIRED_SCOPES_META_KEY } from "@sarthak/agent-shield";
 import type { McpToolDef, ServerDef } from "./types.js";
 
 export function buildMcpServer(def: ServerDef): McpServer {
@@ -17,7 +18,7 @@ function registerTool(server: McpServer, tool: McpToolDef): void {
       description: tool.description,
       inputSchema: tool.inputSchema,
       _meta: {
-        "agent-shield/requiredScopes": tool.requiredScopes,
+        [REQUIRED_SCOPES_META_KEY]: tool.requiredScopes,
       },
     },
     async (input) => {

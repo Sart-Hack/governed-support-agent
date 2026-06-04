@@ -52,11 +52,10 @@ export interface Shield {
 }
 
 export function shield(config: ShieldConfig): Shield {
+  // append() may be sync or return a Promise; void swallows both. We do not await
+  // it — auditing must never block or fail a step.
   const append = (event: AuditEvent): void => {
-    const maybePromise = config.audit.append(event);
-    if (maybePromise && typeof (maybePromise as Promise<void>).then === "function") {
-      void (maybePromise as Promise<void>);
-    }
+    void config.audit.append(event);
   };
 
   const authorize = (request: PolicyEvaluationRequest): PolicyDecision =>
@@ -64,59 +63,35 @@ export function shield(config: ShieldConfig): Shield {
 
   const wrap = <I, O>(stepFn: (input: I, ctx: StepContext) => Promise<O>): ShieldedStep<I, O> => {
     return async (input, ctx) => {
-      if (await config.killSwitch.isTripped()) {
-        const reason = "kill-switch active before step";
+      const log = (kind: AuditEvent["kind"], payload: AuditEvent["payload"]): void =>
         append({
           ts: new Date().toISOString(),
           runId: ctx.runId,
           stepId: ctx.stepId,
-          kind: "kill.triggered",
-          payload: { reason },
+          kind,
+          payload,
         });
+
+      if (await config.killSwitch.isTripped()) {
+        const reason = "kill-switch active before step";
+        log("kill.triggered", { reason });
         throw new KillSwitchTrippedError(reason);
       }
 
       const breakerBefore = config.breaker.state();
       if (breakerBefore.tripped) {
-        append({
-          ts: new Date().toISOString(),
-          runId: ctx.runId,
-          stepId: ctx.stepId,
-          kind: "circuit.tripped",
-          payload: { reason: breakerBefore.reason },
-        });
+        log("circuit.tripped", { reason: breakerBefore.reason });
         throw new CircuitBreakerTrippedError(breakerBefore.reason ?? "unknown");
       }
 
-      append({
-        ts: new Date().toISOString(),
-        runId: ctx.runId,
-        stepId: ctx.stepId,
-        kind: "step.start",
-        payload: { input },
-      });
+      log("step.start", { input });
 
       try {
         const output = await stepFn(input, ctx);
-        append({
-          ts: new Date().toISOString(),
-          runId: ctx.runId,
-          stepId: ctx.stepId,
-          kind: "step.end",
-          payload: { output },
-        });
+        log("step.end", { output });
         return output;
       } catch (err) {
-        append({
-          ts: new Date().toISOString(),
-          runId: ctx.runId,
-          stepId: ctx.stepId,
-          kind: "step.error",
-          payload: {
-            name: (err as Error).name,
-            message: (err as Error).message,
-          },
-        });
+        log("step.error", { name: (err as Error).name, message: (err as Error).message });
         throw err;
       }
     };

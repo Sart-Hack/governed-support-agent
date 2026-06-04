@@ -41,5 +41,9 @@ export type {
   CircuitBreaker,
 } from "./circuit-breaker/index.js";
 
-export { AllowAllScopeCheck } from "./scope-check/index.js";
+export {
+  AllowAllScopeCheck,
+  GrantedScopeCheck,
+  REQUIRED_SCOPES_META_KEY,
+} from "./scope-check/index.js";
 export type { RequiredScope, ScopeCheck } from "./scope-check/index.js";
