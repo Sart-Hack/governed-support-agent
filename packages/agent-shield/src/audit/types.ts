@@ -12,7 +12,8 @@ export type AuditEventKind =
   | "approval.requested"
   | "approval.resolved"
   | "kill.triggered"
-  | "circuit.tripped";
+  | "circuit.tripped"
+  | "run.summary";
 
 export interface AuditEvent {
   ts: string;

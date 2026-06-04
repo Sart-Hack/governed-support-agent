@@ -1,0 +1,175 @@
+import { McpClientPool, defaultMcpTargets } from "@gsa/mcp-client";
+import { loadDefaultPolicies } from "@gsa/policies";
+import {
+  type EntityRef,
+  GrantedScopeCheck,
+  InMemoryAuditSink,
+  NoopKillSwitch,
+  type PolicyEvaluationRequest,
+  type Shield,
+  createBreaker,
+  loadPolicies,
+  shield,
+} from "@sarthak/agent-shield";
+
+// The demo principal: the agent acts as a SupportLead in tenant-A. Cedar
+// policies key off this — SupportLead may read/triage/internal-reply, but
+// customer-facing replies need approval (05) and deletes are hard-forbidden (06).
+export const AGENT_PRINCIPAL: EntityRef = { type: "User", id: "alice" };
+export const AGENT_ROLE: EntityRef = { type: "Role", id: "SupportLead" };
+export const AGENT_TENANT = "tenant-A";
+
+// Least-privilege grant for the principal: read everywhere + internal replies,
+// but NOT customer-facing replies (reply:public) or destructive deletes. These
+// missing scopes are the scope-check's half of defense-in-depth with Cedar.
+export const AGENT_SCOPES = [
+  "zendesk:read",
+  "zendesk:reply:internal",
+  "zendesk:write",
+  "notion:read",
+  "hubspot:read",
+];
+
+// MCP server name -> Cedar resource entity type.
+const RESOURCE_TYPE: Record<string, string> = {
+  zendesk: "Ticket",
+  notion: "KBPage",
+  hubspot: "Account",
+  github: "Repo",
+};
+
+export interface RunContext {
+  /** "approved" once a human has approved a customer-facing action (policy 05). */
+  humanApprovalState?: string;
+  /** Tenant the run operates in. Defaults to the agent's tenant. */
+  tenant?: string;
+}
+
+/**
+ * Translate an MCP tool call into the Cedar authorization request agent-shield
+ * evaluates. Action id == tool name (the policies are authored against the tool
+ * vocabulary); resource type/attrs and the policy context are derived per server
+ * so the relevant policy's `when` clause can decide.
+ */
+export function toPolicyRequest(
+  server: string,
+  tool: string,
+  args: Record<string, unknown>,
+  runCtx: RunContext = {},
+): PolicyEvaluationRequest {
+  const tenant = runCtx.tenant ?? AGENT_TENANT;
+  const resourceType = RESOURCE_TYPE[server] ?? "Resource";
+  const resourceId = resourceIdFor(server, args);
+
+  const resourceAttrs: Record<string, unknown> = { tenant };
+  const context: Record<string, unknown> = {};
+
+  if (server === "notion") {
+    // Policy 02 gates on the page tag. The agent only reads the support-kb and
+    // public surfaces; default to support-kb when a search doesn't pin a tag.
+    resourceAttrs.tag = (args.tag as string) ?? "support-kb";
+  }
+  if (server === "hubspot") {
+    // Policy 03 permits account reads only when redaction is applied.
+    context.responseTransform = "pii-redact";
+  }
+  if (server === "github") {
+    resourceAttrs.name = (args.repo as string) ?? "support";
+    context.severity = (args.severity as string) ?? "P2";
+  }
+  if (tool === "replyPublic" || tool === "sendEmail") {
+    context.humanApprovalState = runCtx.humanApprovalState ?? "pending";
+  }
+
+  return {
+    principal: AGENT_PRINCIPAL,
+    action: { type: "Action", id: tool },
+    resource: { type: resourceType, id: resourceId },
+    context,
+    entities: [
+      { uid: AGENT_PRINCIPAL, attrs: { tenant }, parents: [AGENT_ROLE] },
+      { uid: { type: resourceType, id: resourceId }, attrs: resourceAttrs, parents: [] },
+    ],
+  };
+}
+
+function resourceIdFor(server: string, args: Record<string, unknown>): string {
+  const candidate =
+    (args.ticketId as string) ??
+    (args.id as string) ??
+    (args.accountId as string) ??
+    (args.repo as string);
+  if (candidate) return candidate;
+  // List/search ops have no single resource; a wildcard id still satisfies the
+  // `resource is <Type>` head and the tenant check via attrs.
+  return server === "notion" ? "kb-search" : "*";
+}
+
+export interface Governance {
+  shield: Shield;
+  pool: McpClientPool;
+  audit: InMemoryAuditSink;
+  close(): Promise<void>;
+}
+
+export interface BuildGovernanceOptions {
+  runId?: string;
+  audit?: InMemoryAuditSink;
+  /** Cost ceiling for the circuit breaker. Defaults to $0.50 (BUILD-SPEC). */
+  costCeilingUsd?: number;
+}
+
+export interface ShieldBundle {
+  shield: Shield;
+  audit: InMemoryAuditSink;
+  scopeCheck: GrantedScopeCheck;
+}
+
+/**
+ * Assemble the shield (Cedar policies + audit + kill-switch + circuit-breaker +
+ * scope-check) without any network. Tests use this directly; buildGovernance
+ * adds the connected MCP pool on top.
+ */
+export function buildShield(opts: BuildGovernanceOptions = {}): ShieldBundle {
+  const files = loadDefaultPolicies();
+  const { policies, errors } = loadPolicies(files.map((f) => ({ id: f.id, text: f.text })));
+  if (errors.length > 0) {
+    throw new Error(`policy load errors: ${errors.map((e) => `${e.id}: ${e.message}`).join("; ")}`);
+  }
+
+  const audit = opts.audit ?? new InMemoryAuditSink();
+  const scopeCheck = new GrantedScopeCheck(AGENT_SCOPES);
+  const killSwitch = new NoopKillSwitch();
+  const breaker = createBreaker({
+    costCeilingUsd: opts.costCeilingUsd ?? 0.5,
+    duplicateToolCallLimit: 3,
+  });
+
+  return {
+    shield: shield({ policies, audit, killSwitch, scopeCheck, breaker }),
+    audit,
+    scopeCheck,
+  };
+}
+
+/**
+ * Assemble the full governance layer: the shield plus a connected MCP client
+ * pool sharing the same scope-check and audit sink. This is `shield({...})`
+ * from the spec, ready to drive the workflow.
+ */
+export async function buildGovernance(opts: BuildGovernanceOptions = {}): Promise<Governance> {
+  const { shield: theShield, audit, scopeCheck } = buildShield(opts);
+  const pool = await McpClientPool.connect({
+    targets: defaultMcpTargets(),
+    scopeCheck,
+    audit,
+    runId: opts.runId,
+  });
+
+  return {
+    shield: theShield,
+    pool,
+    audit,
+    close: () => pool.closeAll(),
+  };
+}

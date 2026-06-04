@@ -10,6 +10,7 @@
     "spike:mastra:start": "tsx --env-file=../../.env src/spike-suspend-resume.ts start",
     "spike:mastra:resume": "tsx --env-file=../../.env src/spike-suspend-resume.ts resume",
     "spike:mcp:server": "tsx --env-file=../../.env src/spike-mcp-mock-server.ts",
+    "demo": "tsx --env-file=../../.env src/demo.ts",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -23,9 +24,13 @@
     "vitest": "2.1.8"
   },
   "dependencies": {
+    "@gsa/fixtures": "workspace:*",
+    "@gsa/mcp-client": "workspace:*",
+    "@gsa/policies": "workspace:*",
     "@mastra/core": "^1.37.0",
     "@mastra/pg": "^1.11.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@sarthak/agent-shield": "workspace:*",
     "zod": "^3.23.8"
   }
 }
