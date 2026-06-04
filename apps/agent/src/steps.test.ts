@@ -149,6 +149,28 @@ describe("support-ops reject → revise branch (scenario 3)", () => {
   });
 });
 
+describe("support-ops files a github issue", () => {
+  it("routes createIssue to the github server, which policy 04 (Engineer) allows", async () => {
+    const model = new ScriptedChatModel([
+      { content: '{"category":"bug","customerFacing":false,"summary":"500 on /v2/users"}' },
+      {
+        toolCalls: [
+          { id: "c1", name: "createIssue", args: { title: "500 on /v2/users", severity: "P2" } },
+        ],
+      },
+    ]);
+    const d = deps(model);
+    const out = await runSupportOps(d, { runId: "r5", ticketId: "TCK-3" });
+
+    expect(out.plan?.actions[0]?.server).toBe("github");
+    expect(out.policy?.judgements[0]?.disposition).toBe("allow");
+    expect(out.execution?.results.map((r) => r.tool)).toEqual(["createIssue"]);
+    expect(d.gateway.calls.some((c) => c.server === "github" && c.tool === "createIssue")).toBe(
+      true,
+    );
+  });
+});
+
 describe("toPolicyRequest mapping", () => {
   const { shield } = buildShield();
   const policies = shield.config.policies;
@@ -171,5 +193,10 @@ describe("toPolicyRequest mapping", () => {
   it("denies a customer-facing reply with no approval recorded", () => {
     const req = toPolicyRequest("zendesk", "replyPublic", { ticketId: "TCK-1", text: "x" });
     expect(evaluate(policies, req).decision).toBe("deny");
+  });
+
+  it("allows createIssue on the support repo (Engineer role, non-P0)", () => {
+    const req = toPolicyRequest("github", "createIssue", { title: "bug", severity: "P2" });
+    expect(evaluate(policies, req).decision).toBe("allow");
   });
 });

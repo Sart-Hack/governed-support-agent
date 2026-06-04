@@ -18,18 +18,21 @@ Both are pitched on the microsite: agent demo on `/`, `agent-shield` on `/shield
 
 ## Status
 
-Phase 1 (foundation) — in progress.
+Phase 1 (foundation) complete. Phase 2 (agent core) complete: the agent runs end-to-end.
 
-| Milestone | Done |
+| Phase 2 milestone | Done |
 |---|---|
-| M1 monorepo scaffold (pnpm + Turborepo + strict TS + Biome + Vitest) | ✅ |
-| M2 microsite shell (Next 15 + Geist + Tailwind v4 + Playwright) | ✅ |
-| M3 agent shell (tsx + tsup + Vitest) | ✅ |
-| M4 docker-compose (Langfuse v3 + Postgres + ClickHouse + Redis + MinIO + Bifrost) | ✅ |
-| M5 CI workflow | ✅ |
-| M6 LICENSE + SECURITY + README + fresh-clone smoke | ✅ |
+| `@sarthak/agent-shield`: Cedar evaluator, audit, kill-switch, scope-check, circuit-breaker | ✅ |
+| `@gsa/policies`: 7 Cedar policies mapped to OWASP ASI | ✅ |
+| `@gsa/fixtures`: tickets, Notion KB, HubSpot accounts | ✅ |
+| MCP servers: zendesk / notion / hubspot mocks + real-API github (full 2025-11-25 spec) | ✅ |
+| `@gsa/mcp-client`: governed client with scope-check + Bifrost bootstrap | ✅ |
+| Mastra v2 `support-ops` workflow wrapped by agent-shield | ✅ |
+| `@gsa/tracing`: OTel GenAI spans to Langfuse | ✅ |
+| Slack approval + suspend/resume on Postgres | ✅ |
+| Postgres kill-switch + circuit-breaker | ✅ |
 
-Next up: Phase 2 hour-1 spikes (Mastra v2 `.suspend/.resume` against Postgres; Bifrost in front of three MCP mocks). See [BUILD-SPEC.md](./BUILD-SPEC.md) for the full plan.
+Next up: Phase 3 (microsite pages, eval suite, rrweb recordings, launch). See [BUILD-SPEC.md](./BUILD-SPEC.md).
 
 ## Run locally
 
@@ -62,13 +65,35 @@ pnpm stack:logs      # follow logs
 pnpm stack:down      # stop, keep volumes
 pnpm stack:wipe      # stop and delete volumes
 
-pnpm mcp:servers     # run the 3 mock MCP servers (zendesk 7002, notion 7003, hubspot 7004)
+pnpm mcp:servers     # run the 4 MCP servers (zendesk 7002, notion 7003, hubspot 7004, github 7005)
 ```
 
 The MCP servers run as host processes; Bifrost (in Docker) reaches them via
 `host.docker.internal`. Start them with `pnpm mcp:servers`, then `pnpm stack:bootstrap`
 registers them with the gateway. Bootstrap is idempotent: it reconciles to a known
 state every run, so a fresh clone needs only `pnpm stack:up && pnpm stack:bootstrap`.
+
+## Run the agent
+
+With the stack up and `pnpm mcp:servers` running in another terminal (and an
+`OPENAI_API_KEY` in `.env`):
+
+```bash
+pnpm demo                  # scenario 1: triage a billing ticket end-to-end,
+                           # then print the Langfuse trace link
+
+pnpm --filter @gsa/agent scenario TCK-3        # scenario 3: drafts a customer reply,
+                                               # suspends at the Slack approval gate
+pnpm --filter @gsa/agent scenario:resume <runId> reject "needs detail"   # revise branch
+
+pnpm --filter @gsa/agent scenario2             # scenario 2: runaway loop hits the
+                                               # $0.50 circuit-breaker ceiling
+pnpm --filter @gsa/agent kill on               # scenario 7: kill-switch halts in-flight runs
+```
+
+Every tool call is double-gated (Cedar policy + scope-check), every step is
+audited, and a full trace tree lands in Langfuse. Slack and GitHub run against a
+local stand-in / mock until you add `SLACK_BOT_TOKEN` or `GITHUB_TOKEN` to `.env`.
 
 ## Local CI parity
 

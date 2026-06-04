@@ -153,9 +153,20 @@ export function classifyStep(deps: AgentDeps) {
 
 const PLAN_SYSTEM =
   "You are a support-ops agent. Using the ticket and the knowledge-base hits, decide how to resolve it. " +
-  "If the ticket explicitly asks for a reply, follow-up, or email to the customer, propose a customer-facing reply with replyPublic. " +
-  "Otherwise resolve internally by drafting an internal note (replyInternal) for the support team. " +
+  "Resolve internally by default: draft an internal note (replyInternal) with the answer for the support team. " +
+  "Only propose a customer-facing reply (replyPublic) when the ticket explicitly asks to be contacted or emailed back " +
+  "(phrases like 'reply when fixed', 'send me an email', 'follow up with me'). A how-to question is NOT such a request. " +
+  "If the ticket describes a bug or technical fault engineering should track, also file a tracking issue with createIssue (severity P2). " +
   "Call the tools you intend to take.";
+
+// Which MCP server each planned action routes to.
+const ACTION_SERVER: Record<string, string> = {
+  replyInternal: "zendesk",
+  replyPublic: "zendesk",
+  closeTicket: "zendesk",
+  createIssue: "github",
+  updateIssue: "github",
+};
 
 const ACTION_TOOLS: ToolSchema[] = [
   {
@@ -186,6 +197,20 @@ const ACTION_TOOLS: ToolSchema[] = [
       required: ["ticketId"],
     },
   },
+  {
+    name: "createIssue",
+    description:
+      "File a tracking issue in the support repo for a bug engineering should follow up on.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        body: { type: "string" },
+        severity: { type: "string", enum: ["P1", "P2", "P3"] },
+      },
+      required: ["title"],
+    },
+  },
 ];
 
 export function triageStep(deps: AgentDeps) {
@@ -213,12 +238,12 @@ export function triageStep(deps: AgentDeps) {
     });
     observeCompletion(deps, ctx, completion);
 
-    const actions: PlannedAction[] = completion.toolCalls.map((tc) => ({
-      server: "zendesk",
-      tool: tc.name,
-      args: { ticketId: state.ticketId, ...tc.args },
-      customerFacing: isCustomerFacing(tc.name),
-    }));
+    const actions: PlannedAction[] = completion.toolCalls.map((tc) => {
+      const server = ACTION_SERVER[tc.name] ?? "zendesk";
+      // Zendesk actions are scoped to the ticket; github actions are not.
+      const args = server === "zendesk" ? { ticketId: state.ticketId, ...tc.args } : { ...tc.args };
+      return { server, tool: tc.name, args, customerFacing: isCustomerFacing(tc.name) };
+    });
     return {
       ...state,
       plan: { actions, summary: completion.content || `${actions.length} action(s) proposed` },

@@ -18,18 +18,25 @@ import { type ManagedKillSwitch, createKillSwitch } from "./kill-switch.js";
 // policies key off this — SupportLead may read/triage/internal-reply, but
 // customer-facing replies need approval (05) and deletes are hard-forbidden (06).
 export const AGENT_PRINCIPAL: EntityRef = { type: "User", id: "alice" };
-export const AGENT_ROLE: EntityRef = { type: "Role", id: "SupportLead" };
+// The agent is a support engineer: it triages tickets (SupportLead, policy 01)
+// and files issues in the support repo (Engineer, policy 04).
+export const AGENT_ROLES: EntityRef[] = [
+  { type: "Role", id: "SupportLead" },
+  { type: "Role", id: "Engineer" },
+];
 export const AGENT_TENANT = "tenant-A";
 
-// Least-privilege grant for the principal: read everywhere + internal replies,
-// but NOT customer-facing replies (reply:public) or destructive deletes. These
-// missing scopes are the scope-check's half of defense-in-depth with Cedar.
+// Least-privilege grant for the principal: reads + internal replies + issue
+// writes, but NOT customer-facing replies (reply:public) or destructive deletes.
+// These missing scopes are the scope-check's half of defense-in-depth with Cedar.
 export const AGENT_SCOPES = [
   "zendesk:read",
   "zendesk:reply:internal",
   "zendesk:write",
   "notion:read",
   "hubspot:read",
+  "github:read",
+  "github:issues:write",
 ];
 
 // MCP server name -> Cedar resource entity type.
@@ -89,7 +96,7 @@ export function toPolicyRequest(
     resource: { type: resourceType, id: resourceId },
     context,
     entities: [
-      { uid: AGENT_PRINCIPAL, attrs: { tenant }, parents: [AGENT_ROLE] },
+      { uid: AGENT_PRINCIPAL, attrs: { tenant }, parents: AGENT_ROLES },
       { uid: { type: resourceType, id: resourceId }, attrs: resourceAttrs, parents: [] },
     ],
   };
