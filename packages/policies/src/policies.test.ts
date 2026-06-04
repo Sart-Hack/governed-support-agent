@@ -39,14 +39,14 @@ const files = loadDefaultPolicies();
 const { policies, errors } = loadPolicies(files.map((p) => ({ id: p.id, text: p.text })));
 
 describe("@gsa/policies — loadDefaultPolicies", () => {
-  it("ships exactly 7 cedar files", () => {
-    expect(policyFileNames()).toHaveLength(7);
-    expect(files).toHaveLength(7);
+  it("ships exactly 8 cedar files", () => {
+    expect(policyFileNames()).toHaveLength(8);
+    expect(files).toHaveLength(8);
   });
 
   it("every policy parses without errors", () => {
     expect(errors).toEqual([]);
-    expect(policies).toHaveLength(7);
+    expect(policies).toHaveLength(8);
   });
 
   it("every policy carries an @asi annotation", () => {
@@ -188,8 +188,12 @@ describe("policy 05 — customer-facing requires approval", () => {
     ).toBeDefined();
   });
 
-  it("default-denies replyPublic when approval is approved (no permit for replyPublic on the customer-facing path yet)", () => {
-    expect(evaluate(policies, req("approved")).decision).toBe("deny");
+  it("permits replyPublic once approval is recorded (policy 08)", () => {
+    const decision = evaluate(policies, req("approved"));
+    expect(decision.decision).toBe("allow");
+    expect(
+      decision.reasons.find((r) => r.policyId === "08-customer-reply-after-approval"),
+    ).toBeDefined();
   });
 });
 

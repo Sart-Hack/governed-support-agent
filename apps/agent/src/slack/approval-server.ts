@@ -31,36 +31,46 @@ const mastra = buildSupportOpsWorkflow({
   approvalChannel: defaultApprovalChannel(),
 });
 
+interface ResumeOutcome {
+  ok: boolean;
+  state?: RunState;
+  error?: string;
+}
+
 async function resume(
   runId: string,
   decision: "approved" | "rejected",
   approver: string,
   comment: string | undefined,
-): Promise<RunState | undefined> {
-  const run = await mastra.getWorkflow("supportOps").createRun({ runId });
-  const result = await run.resume({
-    step: "approval-gate",
-    resumeData: { decision, approver, comment },
-  });
-  return result.status === "success" ? (result.result as RunState) : undefined;
+): Promise<ResumeOutcome> {
+  try {
+    const run = await mastra.getWorkflow("supportOps").createRun({ runId });
+    const result = await run.resume({
+      step: "approval-gate",
+      resumeData: { decision, approver, comment },
+    });
+    if (result.status === "success") return { ok: true, state: result.result as RunState };
+    return { ok: false, error: `workflow ${result.status}` };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
 }
 
 function userLabel(u: { id: string; username?: string; name?: string }): string {
   return u.username ?? u.name ?? u.id;
 }
 
-function outcomeBlocks(
-  verb: string,
-  approver: string,
-  state: RunState | undefined,
-  comment?: string,
-) {
-  const executed = state?.execution?.results.map((r) => r.tool).join(", ") || "(none)";
-  const lines = [
-    `*${verb}* by <@${approver}>`,
-    comment ? `Comment: ${comment}` : null,
-    `Executed: ${executed}${state?.execution?.revised ? " (revise branch)" : ""}`,
-  ].filter(Boolean) as string[];
+function outcomeBlocks(verb: string, approver: string, outcome: ResumeOutcome, comment?: string) {
+  const lines: string[] = [`*${verb}* by <@${approver}>`];
+  if (comment) lines.push(`Comment: ${comment}`);
+  if (outcome.ok) {
+    const executed = outcome.state?.execution?.results.map((r) => r.tool).join(", ") || "(none)";
+    lines.push(
+      `Executed: ${executed}${outcome.state?.execution?.revised ? " (revise branch)" : ""}`,
+    );
+  } else {
+    lines.push(`⚠️ Not completed: ${outcome.error}`);
+  }
   return [{ type: "section", text: { type: "mrkdwn", text: lines.join("\n") } }];
 }
 
@@ -72,13 +82,13 @@ app.action("approve", async ({ ack, body, client }) => {
   const runId = (action.actions[0] as ButtonAction).value;
   if (!runId) return;
   const approver = userLabel(action.user);
-  const state = await resume(runId, "approved", approver, undefined);
+  const outcome = await resume(runId, "approved", approver, undefined);
   if (action.channel && action.message) {
     await client.chat.update({
       channel: action.channel.id,
       ts: action.message.ts,
       text: `Approved by ${approver}`,
-      blocks: outcomeBlocks("Approved", approver, state),
+      blocks: outcomeBlocks("Approved", approver, outcome),
     });
   }
 });
@@ -121,13 +131,13 @@ app.view("reject_modal", async ({ ack, body, view, client }) => {
   };
   const comment = view.state.values.comment_block?.comment?.value ?? "";
   const approver = userLabel(body.user);
-  const state = await resume(meta.runId, "rejected", approver, comment);
+  const outcome = await resume(meta.runId, "rejected", approver, comment);
   if (meta.channel && meta.ts) {
     await client.chat.update({
       channel: meta.channel,
       ts: meta.ts,
       text: `Rejected by ${approver}`,
-      blocks: outcomeBlocks("Rejected", approver, state, comment),
+      blocks: outcomeBlocks("Rejected", approver, outcome, comment),
     });
   }
 });

@@ -16,6 +16,7 @@ const POLICY_FILES = [
   "05-customer-facing-requires-approval.cedar",
   "06-delete-account-never.cedar",
   "07-tenant-isolation.cedar",
+  "08-customer-reply-after-approval.cedar",
 ] as const;
 
 export type PolicyFilename = (typeof POLICY_FILES)[number];

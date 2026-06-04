@@ -13,7 +13,7 @@ References:
 |---|---|---|---|
 | ASI01 | Agent Goal Hijack | Notion reads restricted to `public` and `support-kb` tags — limits indirect-injection surface from KB poisoning | [`02-notion-tag-filtered.cedar`](./packages/policies/policies/02-notion-tag-filtered.cedar) |
 | ASI02 | Tool Misuse | Zendesk reads bound to `SupportLead`; GitHub writes bound to `Engineer` + non-P0 + `support` repo | [`01-zendesk-read-only.cedar`](./packages/policies/policies/01-zendesk-read-only.cedar), [`04-github-write-scoped.cedar`](./packages/policies/policies/04-github-write-scoped.cedar) |
-| ASI03 | Delegated Trust | Customer-facing actions (`replyPublic`, `sendEmail`) forbidden unless `context.humanApprovalState == "approved"` | [`05-customer-facing-requires-approval.cedar`](./packages/policies/policies/05-customer-facing-requires-approval.cedar) |
+| ASI03 | Delegated Trust | Customer-facing actions (`replyPublic`, `sendEmail`) forbidden unless `context.humanApprovalState == "approved"`; permitted once approval is recorded | [`05-customer-facing-requires-approval.cedar`](./packages/policies/policies/05-customer-facing-requires-approval.cedar), [`08-customer-reply-after-approval.cedar`](./packages/policies/policies/08-customer-reply-after-approval.cedar) |
 | ASI04 | Data Exfiltration | HubSpot reads only when `context.responseTransform == "pii-redact"` — agent-shield applies the redaction transform | [`03-hubspot-pii-redacted.cedar`](./packages/policies/policies/03-hubspot-pii-redacted.cedar) |
 | ASI05 | Privilege Escalation | Implicit — Cedar's principal-bound role check on every policy + default-deny when no permit matches. No dedicated policy yet. | implicit (all policies) |
 | ASI06 | Inter-Agent / Cross-Boundary | Cross-tenant access forbidden when `principal.tenant != resource.tenant` | [`07-tenant-isolation.cedar`](./packages/policies/policies/07-tenant-isolation.cedar) |
@@ -33,6 +33,7 @@ References:
 | `05-customer-facing-requires-approval` | forbid | ASI03 |
 | `06-delete-account-never` | forbid | ASI10 |
 | `07-tenant-isolation` | forbid | ASI06 |
+| `08-customer-reply-after-approval` | permit | ASI03 |
 
 ## Gaps (honest)
 

@@ -32,6 +32,9 @@ export const AGENT_TENANT = "tenant-A";
 export const AGENT_SCOPES = [
   "zendesk:read",
   "zendesk:reply:internal",
+  // The public-reply tool IS in the agent's toolbelt; Cedar (policy 05/08), not a
+  // withheld scope, is what gates it on human approval.
+  "zendesk:reply:public",
   "zendesk:write",
   "notion:read",
   "hubspot:read",

@@ -17,7 +17,7 @@
   },
   "files": ["dist"],
   "scripts": {
-    "dev": "tsx bin/start.ts",
+    "dev": "tsx --env-file=../../.env bin/start.ts",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
