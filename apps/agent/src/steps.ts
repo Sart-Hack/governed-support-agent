@@ -75,11 +75,25 @@ const isCustomerFacing = (tool: string): boolean => CUSTOMER_FACING_TOOLS.has(to
 const COST_PER_PROMPT_TOKEN = 0.15 / 1_000_000;
 const COST_PER_COMPLETION_TOKEN = 0.6 / 1_000_000;
 
-function observeCost(deps: AgentDeps, completion: CompletionResult): void {
+function observeCompletion(deps: AgentDeps, ctx: StepContext, completion: CompletionResult): void {
   const costUsd =
     completion.usage.promptTokens * COST_PER_PROMPT_TOKEN +
     completion.usage.completionTokens * COST_PER_COMPLETION_TOKEN;
   deps.shield.config.breaker.observe({ costUsd });
+  deps.shield.audit({
+    ts: new Date().toISOString(),
+    runId: ctx.runId,
+    stepId: ctx.stepId,
+    kind: "llm.completion",
+    payload: {
+      model: completion.model,
+      responseModel: completion.model,
+      system: "openai",
+      inputTokens: completion.usage.promptTokens,
+      outputTokens: completion.usage.completionTokens,
+      costUsd,
+    },
+  });
 }
 
 /** Authorize a tool call against Cedar, then dispatch it through the scope-checked pool. */
@@ -127,7 +141,7 @@ export function classifyStep(deps: AgentDeps) {
       temperature: 0,
       maxTokens: 200,
     });
-    observeCost(deps, completion);
+    observeCompletion(deps, ctx, completion);
     return { ...state, classification: parseClassification(completion.content) };
   };
 }
@@ -191,7 +205,7 @@ export function triageStep(deps: AgentDeps) {
       temperature: 0,
       maxTokens: 400,
     });
-    observeCost(deps, completion);
+    observeCompletion(deps, ctx, completion);
 
     const actions: PlannedAction[] = completion.toolCalls.map((tc) => ({
       server: "zendesk",

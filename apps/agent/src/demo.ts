@@ -1,11 +1,14 @@
 import { randomUUID } from "node:crypto";
+import { TracingAuditSink, initTracing } from "@gsa/tracing";
+import { InMemoryAuditSink } from "@sarthak/agent-shield";
 import { buildGovernance } from "./governance.js";
 import { BifrostChatModel } from "./llm/bifrost.js";
 import type { RunState } from "./steps.js";
 import { buildSupportOpsWorkflow } from "./workflow.js";
 
 // `pnpm demo [ticketId]` — runs scenario 1 (TCK-1) end-to-end through the Mastra
-// workflow: Bifrost LLM, governed MCP tool calls, Cedar policy checks, audit log.
+// workflow: Bifrost LLM, governed MCP tool calls, Cedar policy checks, and an
+// OTel trace tree exported to Langfuse.
 
 async function main(): Promise<void> {
   const ticketId = process.argv[2] ?? "TCK-1";
@@ -14,9 +17,14 @@ async function main(): Promise<void> {
   console.log("\n▸ Governed Support Ops Agent: scenario run");
   console.log(`  ticket=${ticketId} runId=${runId}\n`);
 
-  const gov = await buildGovernance({ runId });
+  const tracing = initTracing();
+  const memory = new InMemoryAuditSink();
+  const audit = new TracingAuditSink(tracing.tracer, memory);
+
+  const gov = await buildGovernance({ runId, audit });
   const llm = new BifrostChatModel();
-  console.log(`  LLM endpoint: Bifrost → ${llm.id}`);
+  console.log(`  LLM endpoint : Bifrost → ${llm.id}`);
+  console.log(`  tracing      : ${tracing.enabled ? "Langfuse (OTLP)" : "disabled (no keys)"}`);
 
   const mastra = buildSupportOpsWorkflow({ shield: gov.shield, gateway: gov.pool, llm });
   const workflow = mastra.getWorkflow("supportOps");
@@ -32,11 +40,12 @@ async function main(): Promise<void> {
       return;
     }
 
-    const state = result.result as RunState;
-    printOutcome(state);
-    printAuditTrail(gov.audit.list());
+    printOutcome(result.result as RunState);
+    printAuditTrail(memory.list());
   } finally {
+    audit.finishRun(runId);
     await gov.close();
+    await tracing.shutdown();
   }
 }
 
@@ -60,7 +69,7 @@ function printAuditTrail(
 ): void {
   console.log(`\n── audit trail (${events.length} events) ──`);
   for (const e of events) {
-    const tool = e.payload.tool ?? e.payload.server ?? "";
+    const tool = e.payload.tool ?? e.payload.server ?? e.payload.model ?? "";
     console.log(`  ${e.stepId ?? "-"} · ${e.kind}${tool ? ` · ${tool}` : ""}`);
   }
   console.log("");

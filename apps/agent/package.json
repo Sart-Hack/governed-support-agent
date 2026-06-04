@@ -27,6 +27,7 @@
     "@gsa/fixtures": "workspace:*",
     "@gsa/mcp-client": "workspace:*",
     "@gsa/policies": "workspace:*",
+    "@gsa/tracing": "workspace:*",
     "@mastra/core": "^1.37.0",
     "@mastra/pg": "^1.11.1",
     "@modelcontextprotocol/sdk": "^1.29.0",

@@ -9,6 +9,7 @@ export type AuditEventKind =
   | "tool.result"
   | "scope.granted"
   | "scope.denied"
+  | "llm.completion"
   | "approval.requested"
   | "approval.resolved"
   | "kill.triggered"

@@ -1,6 +1,7 @@
 import { McpClientPool, defaultMcpTargets } from "@gsa/mcp-client";
 import { loadDefaultPolicies } from "@gsa/policies";
 import {
+  type AuditSink,
   type EntityRef,
   GrantedScopeCheck,
   InMemoryAuditSink,
@@ -108,20 +109,21 @@ function resourceIdFor(server: string, args: Record<string, unknown>): string {
 export interface Governance {
   shield: Shield;
   pool: McpClientPool;
-  audit: InMemoryAuditSink;
+  audit: AuditSink;
   close(): Promise<void>;
 }
 
 export interface BuildGovernanceOptions {
   runId?: string;
-  audit?: InMemoryAuditSink;
+  /** Audit sink for the shield and pool. Defaults to a fresh InMemoryAuditSink. */
+  audit?: AuditSink;
   /** Cost ceiling for the circuit breaker. Defaults to $0.50 (BUILD-SPEC). */
   costCeilingUsd?: number;
 }
 
 export interface ShieldBundle {
   shield: Shield;
-  audit: InMemoryAuditSink;
+  audit: AuditSink;
   scopeCheck: GrantedScopeCheck;
 }
 
