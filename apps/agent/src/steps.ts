@@ -153,11 +153,11 @@ export function classifyStep(deps: AgentDeps) {
 
 const PLAN_SYSTEM =
   "You are a support-ops agent. Using the ticket and the knowledge-base hits, decide how to resolve it. " +
-  "Resolve internally by default: draft an internal note (replyInternal) with the answer for the support team. " +
-  "Only propose a customer-facing reply (replyPublic) when the ticket explicitly asks to be contacted or emailed back " +
-  "(phrases like 'reply when fixed', 'send me an email', 'follow up with me'). A how-to question is NOT such a request. " +
-  "If the ticket describes a bug or technical fault engineering should track, also file a tracking issue with createIssue (severity P2). " +
-  "Call the tools you intend to take.";
+  "Rule 1: if the ticket explicitly asks to be contacted or emailed back (phrases like 'reply when fixed', " +
+  "'send me an email', 'send a follow-up email', 'follow up with me'), you MUST propose a customer-facing reply with replyPublic. " +
+  "Rule 2: otherwise, resolve internally with an internal note (replyInternal); a plain how-to question takes only replyInternal. " +
+  "Rule 3: additionally, if the ticket describes a bug or technical fault engineering should track, also file a tracking issue with createIssue (severity P2). " +
+  "Call every tool your rules select.";
 
 // Which MCP server each planned action routes to.
 const ACTION_SERVER: Record<string, string> = {
