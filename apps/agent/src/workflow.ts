@@ -29,6 +29,7 @@ const plannedActionSchema = z.object({
 const stateSchema = z.object({
   runId: z.string(),
   ticketId: z.string(),
+  accountId: z.string().optional(),
   classification: classificationSchema.optional(),
   plan: z.object({ actions: z.array(plannedActionSchema), summary: z.string() }).optional(),
   policy: z
@@ -94,6 +95,11 @@ function approvalGateMastraStep(deps: AgentDeps) {
     suspendSchema: z.object({ runId: z.string(), ticketId: z.string(), pendingTool: z.string() }),
     execute: async ({ inputData, resumeData, suspend }) => {
       const state = inputData as RunState;
+      // A hard refusal rejects the whole plan; there is nothing to approve, so do
+      // not suspend. The deny stands and the execute step short-circuits on it.
+      if (state.policy?.refused) {
+        return { ...state, approval: { state: "not-required" as const } };
+      }
       const pending =
         state.policy?.judgements.filter((j) => j.disposition === "needs-approval") ?? [];
       if (pending.length === 0) {

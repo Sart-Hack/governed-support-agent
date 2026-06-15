@@ -56,6 +56,8 @@ export interface ExecutionOutcome {
 export interface RunState {
   runId: string;
   ticketId: string;
+  /** The ticket's HubSpot account id, captured at classify so account-scoped actions resolve. */
+  accountId?: string;
   classification?: Classification;
   plan?: Plan;
   policy?: PolicyOutcome;
@@ -138,6 +140,7 @@ export function classifyStep(deps: AgentDeps) {
   return async (state: RunState, ctx: StepContext): Promise<RunState> => {
     const ticket = (await governedCall(deps, ctx, "zendesk", "getTicket", { id: state.ticketId }))
       .data;
+    const accountId = (ticket as { accountId?: string } | undefined)?.accountId;
     const completion = await deps.llm.complete({
       messages: [
         { role: "system", content: CLASSIFY_SYSTEM },
@@ -147,7 +150,7 @@ export function classifyStep(deps: AgentDeps) {
       maxTokens: 200,
     });
     observeCompletion(deps, ctx, completion);
-    return { ...state, classification: parseClassification(completion.content) };
+    return { ...state, accountId, classification: parseClassification(completion.content) };
   };
 }
 
@@ -157,6 +160,7 @@ const PLAN_SYSTEM =
   "'send me an email', 'send a follow-up email', 'follow up with me'), you MUST propose a customer-facing reply with replyPublic. " +
   "Rule 2: otherwise, resolve internally with an internal note (replyInternal); a plain how-to question takes only replyInternal. " +
   "Rule 3: additionally, if the ticket describes a bug or technical fault engineering should track, also file a tracking issue with createIssue (severity P2). " +
+  "Rule 4: if the ticket asks to close, terminate, or cancel their account, or to delete, wipe, or erase their account and its data, carry out the account closure with deleteAccount on the customer's account. " +
   "Call every tool your rules select.";
 
 // Which MCP server each planned action routes to.
@@ -166,6 +170,7 @@ const ACTION_SERVER: Record<string, string> = {
   closeTicket: "zendesk",
   createIssue: "github",
   updateIssue: "github",
+  deleteAccount: "hubspot",
 };
 
 const ACTION_TOOLS: ToolSchema[] = [
@@ -211,6 +216,19 @@ const ACTION_TOOLS: ToolSchema[] = [
       required: ["title"],
     },
   },
+  {
+    name: "deleteAccount",
+    description:
+      "Permanently delete a customer's account and all of its associated records, the action that fulfills an account-closure or data-erasure request. Destructive and irreversible.",
+    parameters: {
+      type: "object",
+      properties: {
+        accountId: { type: "string", description: "The customer's account id, e.g. ACC-5." },
+        reason: { type: "string", description: "Why the account is being deleted." },
+      },
+      required: ["accountId"],
+    },
+  },
 ];
 
 export function triageStep(deps: AgentDeps) {
@@ -226,6 +244,7 @@ export function triageStep(deps: AgentDeps) {
           role: "user",
           content: JSON.stringify({
             ticketId: state.ticketId,
+            accountId: state.accountId,
             classification: state.classification,
             kb,
           }),
@@ -240,8 +259,12 @@ export function triageStep(deps: AgentDeps) {
 
     const actions: PlannedAction[] = completion.toolCalls.map((tc) => {
       const server = ACTION_SERVER[tc.name] ?? "zendesk";
-      // Zendesk actions are scoped to the ticket; github actions are not.
-      const args = server === "zendesk" ? { ticketId: state.ticketId, ...tc.args } : { ...tc.args };
+      // Zendesk actions are scoped to the ticket; hubspot actions to the account
+      // (so the deny renders against the real account); github actions are global.
+      let args: Record<string, unknown>;
+      if (server === "zendesk") args = { ticketId: state.ticketId, ...tc.args };
+      else if (server === "hubspot") args = { accountId: state.accountId, ...tc.args };
+      else args = { ...tc.args };
       return { server, tool: tc.name, args, customerFacing: isCustomerFacing(tc.name) };
     });
     return {
@@ -284,6 +307,9 @@ export function policyCheckStep(deps: AgentDeps) {
 
 export function approvalGateStep(_deps: AgentDeps) {
   return async (state: RunState): Promise<RunState> => {
+    // A hard refusal rejects the whole plan; there is nothing to approve, so do
+    // not gate. The deny stands and execute short-circuits on `refused`.
+    if (state.policy?.refused) return { ...state, approval: { state: "not-required" } };
     const needsApproval = state.policy?.judgements.some((j) => j.disposition === "needs-approval");
     return { ...state, approval: { state: needsApproval ? "required" : "not-required" } };
   };

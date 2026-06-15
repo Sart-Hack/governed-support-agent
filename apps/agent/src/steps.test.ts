@@ -112,6 +112,39 @@ describe("support-ops refusal", () => {
   });
 });
 
+describe("support-ops hard refusal via the planner (scenario 5)", () => {
+  it("refuses a planner-proposed deleteAccount and dispatches nothing", async () => {
+    const model = new ScriptedChatModel([
+      {
+        content: '{"category":"churn","customerFacing":false,"summary":"close and wipe account"}',
+      },
+      {
+        toolCalls: [
+          {
+            id: "c1",
+            name: "deleteAccount",
+            args: { accountId: "ACC-5", reason: "customer churn" },
+          },
+        ],
+      },
+    ]);
+    const d = deps(model);
+    const out = await runSupportOps(d, { runId: "r6", ticketId: "TCK-5" });
+
+    // The planner routes deleteAccount to hubspot through the normal flow...
+    expect(out.plan?.actions[0]?.server).toBe("hubspot");
+    expect(out.plan?.actions[0]?.tool).toBe("deleteAccount");
+    // ...Cedar policy 06 (ASI10) denies it, and the disposition is a hard refuse.
+    expect(out.policy?.judgements[0]?.disposition).toBe("refuse");
+    expect(out.policy?.refused).toBe(true);
+    expect(out.policy?.judgements[0]?.asiIds.some((a) => a.includes("ASI10"))).toBe(true);
+    // A refused run does not gate on approval and never dispatches the delete.
+    expect(out.approval?.state).toBe("not-required");
+    expect(out.execution?.results).toEqual([]);
+    expect(d.gateway.calls.some((c) => c.tool === "deleteAccount")).toBe(false);
+  });
+});
+
 describe("support-ops reject → revise branch (scenario 3)", () => {
   it("does not send the customer reply on rejection and leaves an internal revise note", async () => {
     const d = deps(new ScriptedChatModel([]));
