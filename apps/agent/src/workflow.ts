@@ -41,6 +41,16 @@ const stateSchema = z.object({
       }),
     )
     .optional(),
+  subject: z.string().optional(),
+  injection: z
+    .object({
+      detected: z.boolean(),
+      summary: z.string(),
+      asiIds: z.array(z.string()),
+      quarantined: z.array(z.string()),
+      matches: z.array(z.object({ source: z.string(), label: z.string(), snippet: z.string() })),
+    })
+    .optional(),
   classification: classificationSchema.optional(),
   plan: z.object({ actions: z.array(plannedActionSchema), summary: z.string() }).optional(),
   policy: z

@@ -99,6 +99,12 @@ function printOutcome(state: RunState): void {
     `  classification : ${state.classification?.category} (customerFacing=${state.classification?.customerFacing})`,
   );
   console.log(`  plan           : ${state.plan?.summary}`);
+  if (state.injection?.detected) {
+    console.log(`  injection      : ${state.injection.summary}`);
+    for (const m of state.injection.matches) {
+      console.log(`    ↳ ${m.source} [${m.label}]: "${m.snippet}"`);
+    }
+  }
   for (const r of state.redactions ?? []) {
     console.log(
       `  redaction[${r.surface}] : ${r.transform} → ${r.items.join(", ")} [${r.asiIds.join(", ")}]`,

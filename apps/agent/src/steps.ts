@@ -1,10 +1,13 @@
 import type { CallResult, McpClientPool, ToolDescriptor } from "@gsa/mcp-client";
 import {
   type Redaction,
+  type ScannedSource,
   type Shield,
   type StepContext,
   applyResponseTransform,
+  detectInjection,
   formatDecision,
+  summarizeInjection,
 } from "@sarthak/agent-shield";
 import { type RunContext, toPolicyRequest } from "./governance.js";
 import type { ChatModel, CompletionResult, ToolSchema } from "./llm/types.js";
@@ -71,6 +74,18 @@ export interface TransformReport {
   asiIds: string[];
 }
 
+/** Evidence that the injection detector quarantined untrusted retrieved content. */
+export interface InjectionOutcome {
+  detected: boolean;
+  /** Human-readable decision, formatDecision-style, mapped to the ASI id. */
+  summary: string;
+  asiIds: string[];
+  /** Page ids whose content was withheld from the planner. */
+  quarantined: string[];
+  /** The signatures that fired, with the offending snippet. */
+  matches: { source: string; label: string; snippet: string }[];
+}
+
 export interface RunState {
   runId: string;
   ticketId: string;
@@ -80,6 +95,10 @@ export interface RunState {
   account?: unknown;
   /** Response-transforms applied on the governed path (PII redaction evidence). */
   redactions?: TransformReport[];
+  /** The ticket subject, captured at classify; seeds the KB search with the real topic words. */
+  subject?: string;
+  /** Set when the detector flagged injected instructions in retrieved KB content. */
+  injection?: InjectionOutcome;
   classification?: Classification;
   plan?: Plan;
   policy?: PolicyOutcome;
@@ -205,8 +224,9 @@ const CLASSIFY_SYSTEM =
 export function classifyStep(deps: AgentDeps) {
   return async (state: RunState, ctx: StepContext): Promise<RunState> => {
     const ticket = (await governedCall(deps, ctx, "zendesk", "getTicket", { id: state.ticketId }))
-      .result.data;
-    const accountId = (ticket as { accountId?: string } | undefined)?.accountId;
+      .result.data as { accountId?: string; subject?: string } | undefined;
+    const accountId = ticket?.accountId;
+    const subject = ticket?.subject;
     const completion = await deps.llm.complete({
       messages: [
         { role: "system", content: CLASSIFY_SYSTEM },
@@ -216,7 +236,12 @@ export function classifyStep(deps: AgentDeps) {
       maxTokens: 200,
     });
     observeCompletion(deps, ctx, completion);
-    return { ...state, accountId, classification: parseClassification(completion.content) };
+    return {
+      ...state,
+      accountId,
+      subject,
+      classification: parseClassification(completion.content),
+    };
   };
 }
 
@@ -297,11 +322,89 @@ const ACTION_TOOLS: ToolSchema[] = [
   },
 ];
 
+interface KbHit {
+  id: string;
+  title?: string;
+  tag?: string;
+  excerpt?: string;
+}
+interface KbPage {
+  id: string;
+  title?: string;
+  tag?: string;
+  body?: string;
+}
+
 export function triageStep(deps: AgentDeps) {
   return async (state: RunState, ctx: StepContext): Promise<RunState> => {
-    const query = state.classification?.summary ?? state.ticketId;
-    const kb = (await governedCall(deps, ctx, "notion", "search", { query, tag: "support-kb" }))
-      .result.data;
+    // Seed the KB search with the ticket's real topic words (subject) plus the
+    // classifier summary, so the agent actually retrieves the page the ticket is
+    // about instead of depending on the summary phrasing alone.
+    const query =
+      [state.subject, state.classification?.summary].filter(Boolean).join(" ") || state.ticketId;
+    const searchData = (
+      await governedCall(deps, ctx, "notion", "search", { query, tag: "support-kb" })
+    ).result.data as { hits?: KbHit[] } | undefined;
+    const hits: KbHit[] = Array.isArray(searchData?.hits) ? searchData.hits : [];
+
+    // Read the full body of the most relevant page — the document the agent
+    // relies on to answer. This retrieved content is UNTRUSTED: before it is
+    // used for planning it is scanned for instruction injection (the data-vs-
+    // instructions boundary). Injected directives must never reach the planner.
+    let page: KbPage | undefined;
+    if (hits[0]?.id) {
+      page = (await governedCall(deps, ctx, "notion", "getPage", { id: hits[0].id })).result.data as
+        | KbPage
+        | undefined;
+    }
+
+    const scanned: ScannedSource[] = [
+      ...hits.map((h) => ({ source: h.id, scan: detectInjection(h.excerpt ?? "") })),
+      ...(page?.body ? [{ source: page.id, scan: detectInjection(page.body) }] : []),
+    ];
+    const flagged = scanned.filter((s) => s.scan.detected);
+
+    let injection: InjectionOutcome | undefined;
+    let kb: unknown = { query, hits, page };
+
+    if (flagged.length > 0) {
+      const { summary, asiIds } = summarizeInjection(scanned);
+      const quarantined = [...new Set(flagged.map((s) => s.source))];
+      injection = {
+        detected: true,
+        summary,
+        asiIds,
+        quarantined,
+        matches: flagged.flatMap((s) =>
+          s.scan.matches.map((m) => ({ source: s.source, label: m.label, snippet: m.snippet })),
+        ),
+      };
+      deps.shield.audit({
+        ts: new Date().toISOString(),
+        runId: ctx.runId,
+        stepId: ctx.stepId,
+        kind: "injection.detected",
+        payload: { quarantined, asiIds, signatures: injection.matches.map((m) => m.label) },
+      });
+      // Quarantine: the planner never sees the injected directives. Flagged
+      // pages are replaced with a neutral notice; benign content passes through.
+      const q = new Set(quarantined);
+      kb = {
+        query,
+        hits: hits.map((h) =>
+          q.has(h.id)
+            ? {
+                id: h.id,
+                title: h.title,
+                tag: h.tag,
+                quarantined: true,
+                note: "content withheld: prompt-injection detected (ASI01)",
+              }
+            : h,
+        ),
+        page: page && !q.has(page.id) ? page : undefined,
+      };
+    }
 
     // Read the customer's HubSpot account for context. Cedar policy 03 permits
     // this only because agent-shield applies the pii-redact transform, so the
@@ -350,6 +453,7 @@ export function triageStep(deps: AgentDeps) {
       ...state,
       account,
       redactions: redactions.length > 0 ? redactions : undefined,
+      injection,
       plan: { actions, summary: completion.content || `${actions.length} action(s) proposed` },
     };
   };

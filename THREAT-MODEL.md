@@ -11,7 +11,7 @@ References:
 
 | ASI ID | Name | Mitigation | Where |
 |---|---|---|---|
-| ASI01 | Agent Goal Hijack | Notion reads restricted to `public` and `support-kb` tags — limits indirect-injection surface from KB poisoning | [`02-notion-tag-filtered.cedar`](./packages/policies/policies/02-notion-tag-filtered.cedar) |
+| ASI01 | Agent Goal Hijack | Two layers: Notion reads restricted to `public` and `support-kb` tags (limits the poisoning surface), plus a runtime prompt-injection detector that scans untrusted retrieved KB content and quarantines pages carrying injected instructions before they reach the planner | [`02-notion-tag-filtered.cedar`](./packages/policies/policies/02-notion-tag-filtered.cedar), `packages/agent-shield/src/injection/` |
 | ASI02 | Tool Misuse | Zendesk reads bound to `SupportLead`; GitHub writes bound to `Engineer` + non-P0 + `support` repo | [`01-zendesk-read-only.cedar`](./packages/policies/policies/01-zendesk-read-only.cedar), [`04-github-write-scoped.cedar`](./packages/policies/policies/04-github-write-scoped.cedar) |
 | ASI03 | Delegated Trust | Customer-facing actions (`replyPublic`, `sendEmail`) forbidden unless `context.humanApprovalState == "approved"`; permitted once approval is recorded | [`05-customer-facing-requires-approval.cedar`](./packages/policies/policies/05-customer-facing-requires-approval.cedar), [`08-customer-reply-after-approval.cedar`](./packages/policies/policies/08-customer-reply-after-approval.cedar) |
 | ASI04 | Data Exfiltration | HubSpot reads only when `context.responseTransform == "pii-redact"` — agent-shield applies the redaction transform | [`03-hubspot-pii-redacted.cedar`](./packages/policies/policies/03-hubspot-pii-redacted.cedar) |
@@ -39,7 +39,7 @@ References:
 
 - **ASI05 Privilege Escalation** — no dedicated policy. Mitigated implicitly by default-deny + role-scoped permits; a dedicated policy would explicitly forbid role-change actions. Backlog.
 - **ASI07 Memory Leakage** — only partially mitigated by the redaction transform. A full mitigation needs a turn-level memory scrubber, which is out of scope for the demo.
-- **Indirect injection beyond Notion** — only KB content is filtered. Tickets themselves can carry injection payloads; that risk is bounded by Cedar denying all customer-facing actions without approval (ASI03), but the agent will still *read* the injection text.
+- **Indirect injection beyond Notion** — the runtime detector (`packages/agent-shield/src/injection/`) scans every untrusted KB page the agent retrieves, but it is currently wired only into the Notion retrieval path. Ticket bodies are not yet scanned; that risk is bounded by Cedar denying all customer-facing actions without approval (ASI03), and extending the same detector over ticket text is backlog.
 
 ## Demo scenarios that exercise this model
 
@@ -50,7 +50,7 @@ References:
 | 3. Human rejects | ASI03 | 05 | suspended → resumed into revise branch |
 | 4. PII redaction | ASI04 / ASI07 | 03 | un-redacted variant denied; redacted variant allowed |
 | 5. Refusal: delete account | ASI10 | 06 | denied with reason chain |
-| 6. Refusal: indirect injection from Notion | ASI01 | 02 | injection-bearing page is unreachable; agent's plan to act on it is also blocked |
+| 6. Indirect injection from Notion | ASI01 | 02 + injection detector | poisoned KB page is retrieved, the detector flags the injected instructions and quarantines the content; the agent answers the legitimate question and executes none of the injected directives |
 | 7. Kill switch | ASI08 | n/a (kill-switch) | in-flight run halts within 1s |
 | 8. Cross-tenant access denied *(conditional)* | ASI06 | 07 | tenant-A principal denied on tenant-B resource |
 

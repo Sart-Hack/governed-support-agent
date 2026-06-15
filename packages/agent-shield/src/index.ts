@@ -50,3 +50,16 @@ export type { RequiredScope, ScopeCheck } from "./scope-check/index.js";
 
 export { applyResponseTransform, redactPii } from "./transform/index.js";
 export type { Redaction, RedactionResult, TransformResult } from "./transform/index.js";
+export {
+  INJECTION_ASI_ID,
+  INJECTION_ASI_NAME,
+  detectInjection,
+  summarizeInjection,
+} from "./injection/index.js";
+export type {
+  InjectionMatch,
+  InjectionPattern,
+  InjectionScan,
+  InjectionSummary,
+  ScannedSource,
+} from "./injection/index.js";
