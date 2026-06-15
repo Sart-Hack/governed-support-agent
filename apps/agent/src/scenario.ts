@@ -88,6 +88,11 @@ function auditFinish(gov: { audit: unknown }, runId: string): void {
 
 function printOutcome(state: RunState): void {
   console.log("── outcome ─────────────────────────────────");
+  for (const r of state.redactions ?? []) {
+    console.log(
+      `  redaction : ${r.surface} ${r.transform} → ${r.items.join(", ")} [${r.asiIds.join(", ")}]`,
+    );
+  }
   console.log(`  approval  : ${state.approval?.state}`);
   console.log(`  revised   : ${state.execution?.revised ?? false}`);
   console.log(

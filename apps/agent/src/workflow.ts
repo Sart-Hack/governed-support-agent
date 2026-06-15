@@ -30,6 +30,17 @@ const stateSchema = z.object({
   runId: z.string(),
   ticketId: z.string(),
   accountId: z.string().optional(),
+  account: z.unknown().optional(),
+  redactions: z
+    .array(
+      z.object({
+        surface: z.string(),
+        transform: z.string(),
+        items: z.array(z.string()),
+        asiIds: z.array(z.string()),
+      }),
+    )
+    .optional(),
   classification: classificationSchema.optional(),
   plan: z.object({ actions: z.array(plannedActionSchema), summary: z.string() }).optional(),
   policy: z

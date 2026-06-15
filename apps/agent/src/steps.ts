@@ -1,5 +1,11 @@
 import type { CallResult, McpClientPool, ToolDescriptor } from "@gsa/mcp-client";
-import { type Shield, type StepContext, formatDecision } from "@sarthak/agent-shield";
+import {
+  type Redaction,
+  type Shield,
+  type StepContext,
+  applyResponseTransform,
+  formatDecision,
+} from "@sarthak/agent-shield";
 import { type RunContext, toPolicyRequest } from "./governance.js";
 import type { ChatModel, CompletionResult, ToolSchema } from "./llm/types.js";
 import type { ApprovalChannel } from "./slack/approval.js";
@@ -53,11 +59,27 @@ export interface ExecutionOutcome {
   revised?: boolean;
 }
 
+/** Evidence that a Cedar `responseTransform` ran on a governed tool result. */
+export interface TransformReport {
+  /** The surface transformed, e.g. "hubspot.getAccount". */
+  surface: string;
+  /** The transform that ran, e.g. "pii-redact". */
+  transform: string;
+  /** What it masked, as display strings, e.g. "card ****4242". */
+  items: string[];
+  /** ASI ids from the policy that mandated the transform. */
+  asiIds: string[];
+}
+
 export interface RunState {
   runId: string;
   ticketId: string;
   /** The ticket's HubSpot account id, captured at classify so account-scoped actions resolve. */
   accountId?: string;
+  /** The HubSpot account read during research, already PII-redacted (policy 03). */
+  account?: unknown;
+  /** Response-transforms applied on the governed path (PII redaction evidence). */
+  redactions?: TransformReport[];
   classification?: Classification;
   plan?: Plan;
   policy?: PolicyOutcome;
@@ -103,7 +125,19 @@ function observeCompletion(deps: AgentDeps, ctx: StepContext, completion: Comple
   });
 }
 
-/** Authorize a tool call against Cedar, then dispatch it through the scope-checked pool. */
+interface GovernedResult {
+  result: CallResult;
+  /** Set when a Cedar-mandated responseTransform actually masked something. */
+  transform: TransformReport | null;
+}
+
+/**
+ * Authorize a tool call against Cedar, dispatch it through the scope-checked
+ * pool, then run any Cedar-mandated `responseTransform` over the result before
+ * it is returned. PII redaction (policy 03) lives here: the raw tool result
+ * never leaves this function, so it cannot reach the LLM, the audit log, or a
+ * reply unredacted.
+ */
 async function governedCall(
   deps: AgentDeps,
   ctx: StepContext,
@@ -111,8 +145,9 @@ async function governedCall(
   tool: string,
   args: Record<string, unknown>,
   runCtx: RunContext = {},
-): Promise<CallResult> {
-  const decision = deps.shield.authorize(toPolicyRequest(server, tool, args, runCtx));
+): Promise<GovernedResult> {
+  const request = toPolicyRequest(server, tool, args, runCtx);
+  const decision = deps.shield.authorize(request);
   deps.shield.audit({
     ts: new Date().toISOString(),
     runId: ctx.runId,
@@ -125,7 +160,38 @@ async function governedCall(
     throw new PolicyRefusalError(tool, formatDecision(decision).summary);
   }
   deps.shield.config.breaker.observe({ toolCall: { name: tool, argsHash: stableHash(args) } });
-  return deps.gateway.callTool(server, tool, args);
+  const raw = await deps.gateway.callTool(server, tool, args);
+
+  // The policy that permitted this read may require a response transform (e.g.
+  // policy 03 permits a HubSpot read only when responseTransform == "pii-redact").
+  const transformName = request.context?.responseTransform;
+  if (typeof transformName !== "string") return { result: raw, transform: null };
+
+  const masked = new Map<string, Redaction>();
+  const dataT = applyResponseTransform(transformName, raw.data);
+  for (const r of dataT.redactions) masked.set(`${r.type}:${r.masked}`, r);
+  const content = raw.content.map((c) =>
+    typeof c.text === "string"
+      ? { ...c, text: applyResponseTransform(transformName, c.text).value as string }
+      : c,
+  );
+  const result: CallResult = { ...raw, data: dataT.value, content };
+
+  if (masked.size === 0) return { result, transform: null };
+
+  const items = [...masked.values()].map((r) => `${r.type} ${r.masked}`);
+  const asiIds = formatDecision(decision).asiIds;
+  deps.shield.audit({
+    ts: new Date().toISOString(),
+    runId: ctx.runId,
+    stepId: ctx.stepId,
+    kind: "policy.transform",
+    payload: { server, tool, transform: transformName, redactions: items, asiIds },
+  });
+  return {
+    result,
+    transform: { surface: `${server}.${tool}`, transform: transformName, items, asiIds },
+  };
 }
 
 // ---- Phase logic. Each is wrapped by shield.wrap() by the caller, so kill /
@@ -139,7 +205,7 @@ const CLASSIFY_SYSTEM =
 export function classifyStep(deps: AgentDeps) {
   return async (state: RunState, ctx: StepContext): Promise<RunState> => {
     const ticket = (await governedCall(deps, ctx, "zendesk", "getTicket", { id: state.ticketId }))
-      .data;
+      .result.data;
     const accountId = (ticket as { accountId?: string } | undefined)?.accountId;
     const completion = await deps.llm.complete({
       messages: [
@@ -235,7 +301,19 @@ export function triageStep(deps: AgentDeps) {
   return async (state: RunState, ctx: StepContext): Promise<RunState> => {
     const query = state.classification?.summary ?? state.ticketId;
     const kb = (await governedCall(deps, ctx, "notion", "search", { query, tag: "support-kb" }))
-      .data;
+      .result.data;
+
+    // Read the customer's HubSpot account for context. Cedar policy 03 permits
+    // this only because agent-shield applies the pii-redact transform, so the
+    // `account` that reaches the planner (and everything downstream) is already
+    // masked — raw card numbers / SSNs never enter the LLM context.
+    let account: unknown;
+    const redactions: TransformReport[] = [];
+    if (state.accountId) {
+      const read = await governedCall(deps, ctx, "hubspot", "getAccount", { id: state.accountId });
+      account = read.result.data;
+      if (read.transform) redactions.push(read.transform);
+    }
 
     const completion = await deps.llm.complete({
       messages: [
@@ -246,6 +324,7 @@ export function triageStep(deps: AgentDeps) {
             ticketId: state.ticketId,
             accountId: state.accountId,
             classification: state.classification,
+            account,
             kb,
           }),
         },
@@ -269,6 +348,8 @@ export function triageStep(deps: AgentDeps) {
     });
     return {
       ...state,
+      account,
+      redactions: redactions.length > 0 ? redactions : undefined,
       plan: { actions, summary: completion.content || `${actions.length} action(s) proposed` },
     };
   };
@@ -325,7 +406,7 @@ export function executeStep(deps: AgentDeps) {
     // Reject branch: a human declined the customer-facing action. Do not send
     // it; revise by leaving an internal note so the ticket stays actionable.
     if (state.approval?.state === "rejected") {
-      const res = await governedCall(deps, ctx, "zendesk", "replyInternal", {
+      const { result: res } = await governedCall(deps, ctx, "zendesk", "replyInternal", {
         ticketId: state.ticketId,
         text: "Customer-facing reply was rejected on approval. Needs revision before any customer contact.",
       });
@@ -342,9 +423,16 @@ export function executeStep(deps: AgentDeps) {
       // human approved. Skip anything still gated.
       const runnable = disposition === "allow" || (disposition === "needs-approval" && approved);
       if (!runnable) continue;
-      const res = await governedCall(deps, ctx, action.server, action.tool, action.args, {
-        humanApprovalState: approved ? "approved" : "pending",
-      });
+      const { result: res } = await governedCall(
+        deps,
+        ctx,
+        action.server,
+        action.tool,
+        action.args,
+        {
+          humanApprovalState: approved ? "approved" : "pending",
+        },
+      );
       results.push({ tool: action.tool, ok: !res.isError });
     }
     return { ...state, execution: { results } };

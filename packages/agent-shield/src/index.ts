@@ -47,3 +47,6 @@ export {
   REQUIRED_SCOPES_META_KEY,
 } from "./scope-check/index.js";
 export type { RequiredScope, ScopeCheck } from "./scope-check/index.js";
+
+export { applyResponseTransform, redactPii } from "./transform/index.js";
+export type { Redaction, RedactionResult, TransformResult } from "./transform/index.js";

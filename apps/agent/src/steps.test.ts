@@ -204,6 +204,79 @@ describe("support-ops files a github issue", () => {
   });
 });
 
+describe("support-ops PII redaction (scenario 4)", () => {
+  const RAW_CARD = "4242-1111-1111-4242";
+  const RAW_SSN = "123-45-6789";
+  const NOTES = `Refund on INV-44219. Card on file: ${RAW_CARD} (Visa). SSN on file for tax: ${RAW_SSN}.`;
+
+  // A gateway whose getTicket points at a PII account and whose getAccount
+  // returns raw, unredacted notes — agent-shield must mask them on the way out.
+  function piiGateway(): ToolGateway & {
+    calls: { server: string; tool: string }[];
+    accountSeen?: unknown;
+  } {
+    const calls: { server: string; tool: string }[] = [];
+    const self: ReturnType<typeof piiGateway> = {
+      calls,
+      async callTool(server, tool, args) {
+        calls.push({ server, tool });
+        if (tool === "getTicket") {
+          return jsonResult({ id: "TCK-4", accountId: "ACC-PII-1", body: "double charge" });
+        }
+        if (tool === "getAccount") {
+          self.accountSeen = { id: "ACC-PII-1", notes: NOTES, tier: "team" };
+          return jsonResult({ id: "ACC-PII-1", notes: NOTES, tier: "team" });
+        }
+        return jsonResult({ server, tool, args });
+      },
+      async listAllTools() {
+        return {};
+      },
+    };
+    return self;
+  }
+
+  function jsonResult(data: unknown) {
+    return {
+      content: [{ type: "text", text: JSON.stringify(data) }],
+      isError: false,
+      data,
+    };
+  }
+
+  it("reads the account via getAccount and redacts card + SSN before anything sees them", async () => {
+    const model = new ScriptedChatModel([
+      { content: '{"category":"billing","customerFacing":false,"summary":"refund double charge"}' },
+      { toolCalls: [{ id: "c1", name: "replyInternal", args: { text: "Logged the refund." } }] },
+    ]);
+    const gateway = piiGateway();
+    const { shield } = buildShield();
+    const d: AgentDeps & { gateway: typeof gateway } = { shield, gateway, llm: model };
+
+    const out = await runSupportOps(d, { runId: "r-pii", ticketId: "TCK-4" });
+
+    // The account was actually read through the governed path.
+    expect(gateway.calls.some((c) => c.server === "hubspot" && c.tool === "getAccount")).toBe(true);
+
+    // The redacted account stored on state carries the masked forms, not the raw PII.
+    const account = JSON.stringify(out.account);
+    expect(account).not.toContain(RAW_CARD);
+    expect(account).not.toContain(RAW_SSN);
+    expect(account).toContain("****4242");
+    expect(account).toContain("***-**-6789");
+
+    // The transform is recorded as evidence with the policy's ASI id.
+    expect(out.redactions?.[0]?.surface).toBe("hubspot.getAccount");
+    expect(out.redactions?.[0]?.transform).toBe("pii-redact");
+    expect(out.redactions?.[0]?.asiIds.some((a) => a.includes("ASI04"))).toBe(true);
+
+    // No raw card/SSN appears anywhere in the whole returned state.
+    const whole = JSON.stringify(out);
+    expect(whole).not.toContain(RAW_CARD);
+    expect(whole).not.toContain(RAW_SSN);
+  });
+});
+
 describe("toPolicyRequest mapping", () => {
   const { shield } = buildShield();
   const policies = shield.config.policies;
@@ -215,6 +288,12 @@ describe("toPolicyRequest mapping", () => {
 
   it("allows a support-kb notion search", () => {
     const req = toPolicyRequest("notion", "search", { query: "billing", tag: "support-kb" });
+    expect(evaluate(policies, req).decision).toBe("allow");
+  });
+
+  it("allows a hubspot getAccount read when the pii-redact transform is set", () => {
+    const req = toPolicyRequest("hubspot", "getAccount", { id: "ACC-PII-1" });
+    expect(req.context?.responseTransform).toBe("pii-redact");
     expect(evaluate(policies, req).decision).toBe("allow");
   });
 

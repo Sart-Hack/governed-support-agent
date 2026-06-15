@@ -99,6 +99,11 @@ function printOutcome(state: RunState): void {
     `  classification : ${state.classification?.category} (customerFacing=${state.classification?.customerFacing})`,
   );
   console.log(`  plan           : ${state.plan?.summary}`);
+  for (const r of state.redactions ?? []) {
+    console.log(
+      `  redaction[${r.surface}] : ${r.transform} → ${r.items.join(", ")} [${r.asiIds.join(", ")}]`,
+    );
+  }
   for (const j of state.policy?.judgements ?? []) {
     console.log(`  policy[${j.tool}] : ${j.disposition}: ${j.reason}`);
   }
@@ -113,6 +118,14 @@ function printAuditTrail(
 ): void {
   console.log(`\n── audit trail (${events.length} events) ──`);
   for (const e of events) {
+    if (e.kind === "policy.transform") {
+      const items = (e.payload.redactions as string[] | undefined)?.join(", ") ?? "";
+      const asi = (e.payload.asiIds as string[] | undefined)?.join(", ") ?? "";
+      console.log(
+        `  ${e.stepId ?? "-"} · policy.transform · ${e.payload.server}.${e.payload.tool} → redacted ${items} [${asi}]`,
+      );
+      continue;
+    }
     const tool = e.payload.tool ?? e.payload.server ?? e.payload.model ?? "";
     console.log(`  ${e.stepId ?? "-"} · ${e.kind}${tool ? ` · ${tool}` : ""}`);
   }

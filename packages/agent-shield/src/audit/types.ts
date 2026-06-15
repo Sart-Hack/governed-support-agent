@@ -5,6 +5,7 @@ export type AuditEventKind =
   | "step.end"
   | "step.error"
   | "policy.decision"
+  | "policy.transform"
   | "tool.call"
   | "tool.result"
   | "scope.granted"
