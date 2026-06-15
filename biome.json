@@ -18,7 +18,8 @@
       "**/*.tsbuildinfo",
       "pnpm-lock.yaml",
       "**/permissions-data.json",
-      "**/tenants-data.json"
+      "**/tenants-data.json",
+      "**/refusals-data.json"
     ]
   },
   "formatter": {

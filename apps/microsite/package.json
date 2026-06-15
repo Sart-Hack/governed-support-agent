@@ -12,6 +12,7 @@
     "test:e2e": "playwright test",
     "gen:permissions": "tsx scripts/gen-permissions.ts",
     "gen:tenants": "tsx scripts/gen-tenants.ts",
+    "gen:refusals": "tsx scripts/gen-refusals.ts",
     "clean": "rm -rf .next .turbo node_modules"
   },
   "dependencies": {
