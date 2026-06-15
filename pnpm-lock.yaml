@@ -81,6 +81,9 @@ importers:
 
   apps/microsite:
     dependencies:
+      '@gsa/fixtures':
+        specifier: workspace:*
+        version: link:../../packages/fixtures
       '@gsa/policies':
         specifier: workspace:*
         version: link:../../packages/policies

@@ -17,7 +17,8 @@
       "**/test-results",
       "**/*.tsbuildinfo",
       "pnpm-lock.yaml",
-      "**/permissions-data.json"
+      "**/permissions-data.json",
+      "**/tenants-data.json"
     ]
   },
   "formatter": {
