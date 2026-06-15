@@ -23,7 +23,7 @@ Phase 1 (foundation) complete. Phase 2 (agent core) complete: the agent runs end
 | Phase 2 milestone | Done |
 |---|---|
 | `@sarthak/agent-shield`: Cedar evaluator, audit, kill-switch, scope-check, circuit-breaker | ✅ |
-| `@gsa/policies`: 7 Cedar policies mapped to OWASP ASI | ✅ |
+| `@gsa/policies`: 8 Cedar policies mapped to OWASP ASI | ✅ |
 | `@gsa/fixtures`: tickets, Notion KB, HubSpot accounts | ✅ |
 | MCP servers: zendesk / notion / hubspot mocks + real-API github (full 2025-11-25 spec) | ✅ |
 | `@gsa/mcp-client`: governed client with scope-check + Bifrost bootstrap | ✅ |

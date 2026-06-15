@@ -97,7 +97,7 @@ function NodeBox({ node }: { node: ArchNode }) {
   if (!node.href) return body;
   return (
     <a href={node.href} target="_blank" rel="noreferrer">
-      <title>{`${node.label} — open in repo`}</title>
+      <title>{`${node.label}: open in repo`}</title>
       {body}
     </a>
   );
@@ -158,7 +158,7 @@ export function ArchitectureDiagram() {
         const x = 56 + i * 124;
         return (
           <a key={chip.label} href={chip.href} target="_blank" rel="noreferrer">
-            <title>{`${chip.label} — open in repo`}</title>
+            <title>{`${chip.label}: open in repo`}</title>
             <rect
               x={x}
               y={356}

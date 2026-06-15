@@ -62,7 +62,7 @@ export function PermissionMatrix({ matrix }: { matrix: Matrix }) {
         <Legend
           glyph="◑"
           className="text-approval"
-          text="conditional — permitted only when the policy condition holds"
+          text="conditional: permitted only when the policy condition holds"
         />
         <Legend glyph="✕" className="text-danger" text="deny" />
         <span className="font-mono text-xs">
