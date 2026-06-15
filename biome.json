@@ -16,7 +16,8 @@
       "**/playwright-report",
       "**/test-results",
       "**/*.tsbuildinfo",
-      "pnpm-lock.yaml"
+      "pnpm-lock.yaml",
+      "**/permissions-data.json"
     ]
   },
   "formatter": {

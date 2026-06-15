@@ -1,0 +1,270 @@
+{
+  "roles": [
+    "SupportLead",
+    "Engineer"
+  ],
+  "groups": [
+    {
+      "server": "zendesk",
+      "resourceType": "Ticket",
+      "rows": [
+        {
+          "action": "listTickets",
+          "cells": [
+            {
+              "state": "allow",
+              "policyId": "01-zendesk-read-only",
+              "policyNum": "01",
+              "asi": "ASI02 Tool Misuse"
+            },
+            {
+              "state": "deny",
+              "policyId": "default-deny",
+              "policyNum": "",
+              "asi": ""
+            }
+          ]
+        },
+        {
+          "action": "getTicket",
+          "cells": [
+            {
+              "state": "allow",
+              "policyId": "01-zendesk-read-only",
+              "policyNum": "01",
+              "asi": "ASI02 Tool Misuse"
+            },
+            {
+              "state": "deny",
+              "policyId": "default-deny",
+              "policyNum": "",
+              "asi": ""
+            }
+          ]
+        },
+        {
+          "action": "replyInternal",
+          "cells": [
+            {
+              "state": "allow",
+              "policyId": "01-zendesk-read-only",
+              "policyNum": "01",
+              "asi": "ASI02 Tool Misuse"
+            },
+            {
+              "state": "deny",
+              "policyId": "default-deny",
+              "policyNum": "",
+              "asi": ""
+            }
+          ]
+        },
+        {
+          "action": "closeTicket",
+          "cells": [
+            {
+              "state": "allow",
+              "policyId": "01-zendesk-read-only",
+              "policyNum": "01",
+              "asi": "ASI02 Tool Misuse"
+            },
+            {
+              "state": "deny",
+              "policyId": "default-deny",
+              "policyNum": "",
+              "asi": ""
+            }
+          ]
+        },
+        {
+          "action": "replyPublic",
+          "cells": [
+            {
+              "state": "conditional",
+              "policyId": "08-customer-reply-after-approval",
+              "policyNum": "08",
+              "asi": "ASI03 Delegated Trust"
+            },
+            {
+              "state": "deny",
+              "policyId": "default-deny",
+              "policyNum": "",
+              "asi": ""
+            }
+          ]
+        },
+        {
+          "action": "deleteUser",
+          "cells": [
+            {
+              "state": "deny",
+              "policyId": "06-delete-account-never",
+              "policyNum": "06",
+              "asi": "ASI10 Rogue Agents"
+            },
+            {
+              "state": "deny",
+              "policyId": "06-delete-account-never",
+              "policyNum": "06",
+              "asi": "ASI10 Rogue Agents"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "server": "notion",
+      "resourceType": "KBPage",
+      "rows": [
+        {
+          "action": "search",
+          "cells": [
+            {
+              "state": "conditional",
+              "policyId": "02-notion-tag-filtered",
+              "policyNum": "02",
+              "asi": "ASI01 Agent Goal Hijack"
+            },
+            {
+              "state": "deny",
+              "policyId": "default-deny",
+              "policyNum": "",
+              "asi": ""
+            }
+          ]
+        },
+        {
+          "action": "getPage",
+          "cells": [
+            {
+              "state": "conditional",
+              "policyId": "02-notion-tag-filtered",
+              "policyNum": "02",
+              "asi": "ASI01 Agent Goal Hijack"
+            },
+            {
+              "state": "deny",
+              "policyId": "default-deny",
+              "policyNum": "",
+              "asi": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "server": "hubspot",
+      "resourceType": "Account",
+      "rows": [
+        {
+          "action": "getAccount",
+          "cells": [
+            {
+              "state": "conditional",
+              "policyId": "03-hubspot-pii-redacted",
+              "policyNum": "03",
+              "asi": "ASI04 Data Exfiltration"
+            },
+            {
+              "state": "deny",
+              "policyId": "default-deny",
+              "policyNum": "",
+              "asi": ""
+            }
+          ]
+        },
+        {
+          "action": "listContacts",
+          "cells": [
+            {
+              "state": "conditional",
+              "policyId": "03-hubspot-pii-redacted",
+              "policyNum": "03",
+              "asi": "ASI04 Data Exfiltration"
+            },
+            {
+              "state": "deny",
+              "policyId": "default-deny",
+              "policyNum": "",
+              "asi": ""
+            }
+          ]
+        },
+        {
+          "action": "deleteAccount",
+          "cells": [
+            {
+              "state": "deny",
+              "policyId": "06-delete-account-never",
+              "policyNum": "06",
+              "asi": "ASI10 Rogue Agents"
+            },
+            {
+              "state": "deny",
+              "policyId": "06-delete-account-never",
+              "policyNum": "06",
+              "asi": "ASI10 Rogue Agents"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "server": "github",
+      "resourceType": "Repo",
+      "rows": [
+        {
+          "action": "createIssue",
+          "cells": [
+            {
+              "state": "deny",
+              "policyId": "default-deny",
+              "policyNum": "",
+              "asi": ""
+            },
+            {
+              "state": "conditional",
+              "policyId": "04-github-write-scoped",
+              "policyNum": "04",
+              "asi": "ASI02 Tool Misuse"
+            }
+          ]
+        },
+        {
+          "action": "updateIssue",
+          "cells": [
+            {
+              "state": "deny",
+              "policyId": "default-deny",
+              "policyNum": "",
+              "asi": ""
+            },
+            {
+              "state": "conditional",
+              "policyId": "04-github-write-scoped",
+              "policyNum": "04",
+              "asi": "ASI02 Tool Misuse"
+            }
+          ]
+        },
+        {
+          "action": "listProjects",
+          "cells": [
+            {
+              "state": "deny",
+              "policyId": "default-deny",
+              "policyNum": "",
+              "asi": ""
+            },
+            {
+              "state": "conditional",
+              "policyId": "04-github-write-scoped",
+              "policyNum": "04",
+              "asi": "ASI02 Tool Misuse"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
