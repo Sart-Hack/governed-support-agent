@@ -38,8 +38,8 @@ export function tools(state: NotionState): McpToolDef[] {
       const terms = queryTerms(q);
       const scored = Array.from(state.pages.values())
         .filter((p) => !tag || p.tag === tag)
-        .map((p) => ({ page: p, score: overlap(p, terms) }))
-        .filter((s) => terms.length > 0 && s.score > 0)
+        .map((p) => ({ page: p, score: relevanceScore(p, terms) }))
+        .filter((s) => terms.length > 0 && s.score >= MIN_SCORE)
         .sort((a, b) => b.score - a.score);
       const hits = scored.slice(0, input.limit ?? 10).map(({ page: p }) => ({
         id: p.id,
@@ -118,11 +118,27 @@ function queryTerms(query: string): string[] {
   return [...seen];
 }
 
-function overlap(page: { title: string; body: string }, terms: string[]): number {
-  const hay = `${page.title}\n${page.body}`.toLowerCase();
-  let n = 0;
-  for (const t of terms) if (hay.includes(t)) n++;
-  return n;
+// A title match is the honest signal of what a page is about, so it outweighs a
+// body match — a query that hits a page's title outranks one that only brushes
+// its body on an incidental common word. Each term scores once: title weight if
+// it appears in the title, otherwise body weight if it appears in the body.
+const TITLE_WEIGHT = 3;
+const BODY_WEIGHT = 1;
+// A page must clear this to be returned at all. With these weights it amounts to
+// "match the title on at least one term, or the body on at least three": a page
+// whose long body merely brushes a couple of incidental common words from the
+// ticket (e.g. "customer", "closed") stays below the floor and is not surfaced.
+const MIN_SCORE = TITLE_WEIGHT;
+
+function relevanceScore(page: { title: string; body: string }, terms: string[]): number {
+  const title = page.title.toLowerCase();
+  const body = page.body.toLowerCase();
+  let s = 0;
+  for (const t of terms) {
+    if (title.includes(t)) s += TITLE_WEIGHT;
+    else if (body.includes(t)) s += BODY_WEIGHT;
+  }
+  return s;
 }
 
 function firstTermIn(page: { title: string; body: string }, terms: string[]): string | undefined {

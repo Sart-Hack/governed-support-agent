@@ -337,11 +337,11 @@ interface KbPage {
 
 export function triageStep(deps: AgentDeps) {
   return async (state: RunState, ctx: StepContext): Promise<RunState> => {
-    // Seed the KB search with the ticket's real topic words (subject) plus the
-    // classifier summary, so the agent actually retrieves the page the ticket is
-    // about instead of depending on the summary phrasing alone.
-    const query =
-      [state.subject, state.classification?.summary].filter(Boolean).join(" ") || state.ticketId;
+    // Seed the KB search with the ticket's real topic words (the subject). The
+    // subject is the deterministic statement of what the ticket is about; the
+    // LLM classification summary is derived and varies run to run, and feeding
+    // it in dragged unrelated pages into the results, so it is left out here.
+    const query = state.subject || state.ticketId;
     const searchData = (
       await governedCall(deps, ctx, "notion", "search", { query, tag: "support-kb" })
     ).result.data as { hits?: KbHit[] } | undefined;
