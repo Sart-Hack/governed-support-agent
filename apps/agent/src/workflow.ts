@@ -42,6 +42,7 @@ const stateSchema = z.object({
     )
     .optional(),
   subject: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   injection: z
     .object({
       detected: z.boolean(),

@@ -42,6 +42,19 @@ async function main(): Promise<void> {
       return;
     }
     if (result.status !== "success") {
+      const breaker = gov.shield.config.breaker.state();
+      if (breaker.tripped) {
+        console.log("\n⛔ circuit breaker tripped — runaway loop halted");
+        console.log(`   reason          : ${breaker.reason}`);
+        console.log(
+          `   cumulative cost : $${breaker.cumulativeCostUsd.toFixed(2)} (ceiling $0.50)`,
+        );
+        console.log(
+          '   the run is halted before the next step; the "$437 overnight loop" does not happen.',
+        );
+        printAuditTrail(memory.list());
+        return;
+      }
       console.log(`\n✗ workflow status=${result.status}`);
       console.log(JSON.stringify(result, null, 2));
       process.exitCode = 1;

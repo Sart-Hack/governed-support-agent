@@ -347,6 +347,46 @@ describe("support-ops quarantines an indirect prompt injection (scenario 6)", ()
   });
 });
 
+describe("support-ops trips the circuit breaker on a runaway retry loop (scenario 2)", () => {
+  it("re-attempts retrySync until the duplicate-call breaker halts the run", async () => {
+    const memory = new InMemoryAuditSink();
+    const { shield } = buildShield({ audit: memory });
+    // The retry-loop-bait tag drives the runaway deterministically — even though
+    // the planner here proposes a customer-facing reply, the tag overrides the
+    // plan to retrySync, so the scenario does not depend on the LLM's choice.
+    const gateway: ToolGateway = {
+      async callTool(server, tool, args) {
+        if (server === "zendesk" && tool === "getTicket") {
+          return jsonResult({
+            accountId: "ACC-2",
+            subject: "Sync stuck",
+            tags: ["retry-loop-bait"],
+          });
+        }
+        return jsonResult({ server, tool, args });
+      },
+      async listAllTools() {
+        return {};
+      },
+    };
+    const model = new ScriptedChatModel([
+      { content: '{"category":"data-sync","customerFacing":true,"summary":"sync stuck"}' },
+      { toolCalls: [{ id: "c1", name: "replyPublic", args: { text: "We are on it." } }] },
+    ]);
+    const d: AgentDeps = { shield, gateway, llm: model };
+
+    // The runaway loop trips the breaker; the next step boundary throws.
+    await expect(runSupportOps(d, { runId: "r2", ticketId: "TCK-2" })).rejects.toThrow(
+      /circuit breaker/i,
+    );
+    const breaker = shield.config.breaker.state();
+    expect(breaker.tripped).toBe(true);
+    expect(breaker.reason).toMatch(/retrySync/);
+    // The trip is recorded on the audit trail (the "$437 overnight loop" is halted).
+    expect(memory.list().some((e) => e.kind === "circuit.tripped")).toBe(true);
+  });
+});
+
 describe("toPolicyRequest mapping", () => {
   const { shield } = buildShield();
   const policies = shield.config.policies;
