@@ -45,6 +45,9 @@ jobs:
       - name: Test (turbo)
         run: pnpm test
 
+      - name: Eval suite (custom + OWASP-ASI)
+        run: pnpm eval
+
       - name: Build microsite
         run: pnpm --filter @gsa/microsite build
 

@@ -14,6 +14,7 @@
     "scenario": "tsx --env-file=../../.env src/scenario.ts",
     "scenario:resume": "tsx --env-file=../../.env src/scenario.ts resume",
     "scenario2": "tsx --env-file=../../.env src/scenario2.ts",
+    "eval": "tsx src/eval/run.ts",
     "kill": "tsx --env-file=../../.env src/kill.ts",
     "slack:approvals": "tsx --env-file=../../.env src/slack/approval-server.ts",
     "build": "tsup",

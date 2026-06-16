@@ -19,6 +19,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "demo": "pnpm --filter @gsa/agent demo",
+    "eval": "pnpm --filter @gsa/agent eval",
     "stack:up": "docker compose up -d",
     "stack:down": "docker compose down",
     "stack:wipe": "docker compose down -v",
