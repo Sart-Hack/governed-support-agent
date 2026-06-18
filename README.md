@@ -3,6 +3,7 @@
 > **AI agents your security team will actually approve.** For US tech companies past Series A that need agents, not chatbots.
 
 [![ci](https://github.com/Sart-Hack/governed-support-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Sart-Hack/governed-support-agent/actions/workflows/ci.yml)
+[![evals](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Sart-Hack/governed-support-agent/main/evals/results/badge.json)](./apps/agent/src/eval)
 [![license](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](./LICENSE)
 [![mcp](https://img.shields.io/badge/MCP-2025--11--25-8B5CF6.svg)](https://modelcontextprotocol.io)
 
