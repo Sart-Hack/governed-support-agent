@@ -25,6 +25,29 @@ Three things a chatbot wrapper does not do:
 - **There is a kill-switch and a circuit breaker.** An operator can halt an in-flight run at the next step boundary, and a runaway loop trips a cost ceiling before it bills you for an overnight retry storm.
 - **Indirect prompt injection is handled, not hoped away.** Untrusted content the agent retrieves, like a poisoned knowledge-base page, is scanned and quarantined before it reaches the planner, so injected instructions never become actions.
 
+## Architecture
+
+```text
+                      ┌──────────────────┐
+                      │  Zendesk ticket  │
+                      └────────┬─────────┘
+                               ▼
+  apps/agent · Mastra v2 workflow
+    ingest → triage → policy-check → approval-gate → execute → audit
+                                          │             │         │
+        Slack approval ◀──────────────────┘             │         └──────────▶ Langfuse
+        (suspend / resume)         approve / reject      │ tool calls           (OTel gen_ai.* spans)
+                                                         ▼
+  agent-shield · policy decision point: authorizes every governed tool call
+    Cedar policies · audit log · kill-switch · scope-check · circuit breaker
+                                                         │
+                                                         ▼
+    zendesk (mock)    notion (mock)    hubspot (mock)    github (real API)
+```
+
+The same structure renders as a hand-authored SVG on the microsite `/architecture`
+page, sourced from [`app/lib/architecture.ts`](./apps/microsite/app/lib/architecture.ts).
+
 ## Status
 
 Complete and runnable end-to-end. A Mastra v2 workflow wrapped by `agent-shield`
