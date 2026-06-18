@@ -14,8 +14,8 @@ Do not file public issues for unfixed security findings.
 
 This project explicitly does **not** use:
 
-- **LiteLLM** versions 1.82.7 or 1.82.8 (or any version) — affected by a March 2026 PyPI supply-chain attack that distributed credential-stealing malware. The chosen LLM gateway is Bifrost (Apache 2.0, Maxim AI).
-- **Portkey** — acquired by Palo Alto Networks in April 2026; OSS roadmap uncertain. Not a security finding, but the rationale is the same trust-vector concern.
+- **LiteLLM** versions 1.82.7 or 1.82.8 (or any version) - affected by a March 2026 PyPI supply-chain attack that distributed credential-stealing malware. The chosen LLM gateway is Bifrost (Apache 2.0, Maxim AI).
+- **Portkey** - acquired by Palo Alto Networks in April 2026; OSS roadmap uncertain. Not a security finding, but the rationale is the same trust-vector concern.
 
 All package versions are pinned in `pnpm-lock.yaml`. Docker images are pinned to specific tags (e.g. `postgres:17`, `langfuse/langfuse:3`, `maximhq/bifrost:v1.5.5`). Run `pnpm audit --prod` and `osv-scanner` before any release.
 

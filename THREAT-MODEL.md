@@ -1,11 +1,11 @@
 # Threat Model
 
-How the Governed Support Ops Agent maps to the **OWASP Top 10 for Agentic Applications (ASI01–ASI10, December 2025)**. Every Cedar policy in [`packages/policies/`](./packages/policies/policies/) is mapped to its primary ASI ID below; every ASI ID is either covered by a policy, by a runtime control (kill-switch, circuit breaker), or has an honest gap noted.
+How the Governed Support Ops Agent maps to the **OWASP Top 10 for Agentic Applications (ASI01-ASI10, December 2025)**. Every Cedar policy in [`packages/policies/`](./packages/policies/policies/) is mapped to its primary ASI ID below; every ASI ID is either covered by a policy, by a runtime control (kill-switch, circuit breaker), or has an honest gap noted.
 
 References:
-- OWASP Agentic AI Top 10 — https://genai.owasp.org/llm-top-10/
-- Policies as source of truth — [`packages/policies/policies/*.cedar`](./packages/policies/policies/)
-- Runtime controls — `packages/agent-shield/src/{kill-switch,circuit-breaker}/`
+- OWASP Agentic AI Top 10 - https://genai.owasp.org/llm-top-10/
+- Policies as source of truth - [`packages/policies/policies/*.cedar`](./packages/policies/policies/)
+- Runtime controls - `packages/agent-shield/src/{kill-switch,circuit-breaker}/`
 
 ## Coverage matrix
 
@@ -14,13 +14,13 @@ References:
 | ASI01 | Agent Goal Hijack | Two layers: Notion reads restricted to `public` and `support-kb` tags (limits the poisoning surface), plus a runtime prompt-injection detector that scans untrusted retrieved KB content and quarantines pages carrying injected instructions before they reach the planner | [`02-notion-tag-filtered.cedar`](./packages/policies/policies/02-notion-tag-filtered.cedar), `packages/agent-shield/src/injection/` |
 | ASI02 | Tool Misuse | Zendesk reads bound to `SupportLead`; GitHub writes bound to `Engineer` + non-P0 + `support` repo | [`01-zendesk-read-only.cedar`](./packages/policies/policies/01-zendesk-read-only.cedar), [`04-github-write-scoped.cedar`](./packages/policies/policies/04-github-write-scoped.cedar) |
 | ASI03 | Delegated Trust | Customer-facing actions (`replyPublic`, `sendEmail`) forbidden unless `context.humanApprovalState == "approved"`; permitted once approval is recorded | [`05-customer-facing-requires-approval.cedar`](./packages/policies/policies/05-customer-facing-requires-approval.cedar), [`08-customer-reply-after-approval.cedar`](./packages/policies/policies/08-customer-reply-after-approval.cedar) |
-| ASI04 | Data Exfiltration | HubSpot reads only when `context.responseTransform == "pii-redact"` — agent-shield applies the redaction transform | [`03-hubspot-pii-redacted.cedar`](./packages/policies/policies/03-hubspot-pii-redacted.cedar) |
-| ASI05 | Privilege Escalation | Implicit — Cedar's principal-bound role check on every policy + default-deny when no permit matches. No dedicated policy yet. | implicit (all policies) |
+| ASI04 | Data Exfiltration | HubSpot reads only when `context.responseTransform == "pii-redact"` - agent-shield applies the redaction transform | [`03-hubspot-pii-redacted.cedar`](./packages/policies/policies/03-hubspot-pii-redacted.cedar) |
+| ASI05 | Privilege Escalation | Implicit - Cedar's principal-bound role check on every policy + default-deny when no permit matches. No dedicated policy yet. | implicit (all policies) |
 | ASI06 | Inter-Agent / Cross-Boundary | Cross-tenant access forbidden when `principal.tenant != resource.tenant` | [`07-tenant-isolation.cedar`](./packages/policies/policies/07-tenant-isolation.cedar) |
-| ASI07 | Memory Leakage | Partially — same redaction transform as ASI04. PII redaction prevents leakage into LLM short-term memory. | [`03-hubspot-pii-redacted.cedar`](./packages/policies/policies/03-hubspot-pii-redacted.cedar) |
+| ASI07 | Memory Leakage | Partially - same redaction transform as ASI04. PII redaction prevents leakage into LLM short-term memory. | [`03-hubspot-pii-redacted.cedar`](./packages/policies/policies/03-hubspot-pii-redacted.cedar) |
 | ASI08 | Operator Control | Kill-switch: Postgres-backed flag polled per workflow step; in-flight runs suspend gracefully and audit-log the halt | `packages/agent-shield/src/kill-switch/` (full impl: P2-M9) |
 | ASI09 | Cost / Quota | Circuit breaker: $0.50 cumulative LLM cost ceiling per run + duplicate-tool-call detector (>3 identical calls). Trips loud, halts run. | `packages/agent-shield/src/circuit-breaker/` |
-| ASI10 | Rogue Agents | Hard-forbid on destructive deletion of customer records — `hubspot:deleteAccount` and `zendesk:deleteUser` denied unconditionally | [`06-delete-account-never.cedar`](./packages/policies/policies/06-delete-account-never.cedar) |
+| ASI10 | Rogue Agents | Hard-forbid on destructive deletion of customer records - `hubspot:deleteAccount` and `zendesk:deleteUser` denied unconditionally | [`06-delete-account-never.cedar`](./packages/policies/policies/06-delete-account-never.cedar) |
 
 ## Policies → ASI quick view
 
@@ -37,15 +37,15 @@ References:
 
 ## Gaps (honest)
 
-- **ASI05 Privilege Escalation** — no dedicated policy. Mitigated implicitly by default-deny + role-scoped permits; a dedicated policy would explicitly forbid role-change actions. Backlog.
-- **ASI07 Memory Leakage** — only partially mitigated by the redaction transform. A full mitigation needs a turn-level memory scrubber, which is out of scope for the demo.
-- **Indirect injection beyond Notion** — the runtime detector (`packages/agent-shield/src/injection/`) scans every untrusted KB page the agent retrieves, but it is currently wired only into the Notion retrieval path. Ticket bodies are not yet scanned; that risk is bounded by Cedar denying all customer-facing actions without approval (ASI03), and extending the same detector over ticket text is backlog.
+- **ASI05 Privilege Escalation** - no dedicated policy. Mitigated implicitly by default-deny + role-scoped permits; a dedicated policy would explicitly forbid role-change actions. Backlog.
+- **ASI07 Memory Leakage** - only partially mitigated by the redaction transform. A full mitigation needs a turn-level memory scrubber, which is out of scope for the demo.
+- **Indirect injection beyond Notion** - the runtime detector (`packages/agent-shield/src/injection/`) scans every untrusted KB page the agent retrieves, but it is currently wired only into the Notion retrieval path. Ticket bodies are not yet scanned; that risk is bounded by Cedar denying all customer-facing actions without approval (ASI03), and extending the same detector over ticket text is backlog.
 
 ## Demo scenarios that exercise this model
 
 | Scenario | ASI exercised | Policy invoked | Outcome |
 |---|---|---|---|
-| 1. Happy path | — | 01, 04 | allow |
+| 1. Happy path | - | 01, 04 | allow |
 | 2. Cost ceiling fires | ASI09 | n/a (circuit breaker) | run halts mid-flight |
 | 3. Human rejects | ASI03 | 05 | suspended → resumed into revise branch |
 | 4. PII redaction | ASI04 / ASI07 | 03 | un-redacted variant denied; redacted variant allowed |

@@ -54,7 +54,7 @@ pnpm --filter @gsa/microsite dev # microsite on http://localhost:3000
 pnpm --filter @gsa/agent dev     # agent CLI in watch mode
 ```
 
-Langfuse UI: http://localhost:3001 — login `demo@example.com` / `demodemo`.
+Langfuse UI: http://localhost:3001, login `demo@example.com` / `demodemo`.
 
 Stack control:
 
@@ -111,8 +111,8 @@ Same commands run in `.github/workflows/ci.yml`. ~46s on a clean runner.
 
 ## Source of truth
 
-- [`BUILD-SPEC.md`](./BUILD-SPEC.md) — architecture, scenarios, hour budget, risk register, verification gate. Read it before writing code.
-- [`CLAUDE.md`](./CLAUDE.md) — orientation for Claude Code sessions: locked decisions, anti-patterns, cut list, copy guide.
+- [`BUILD-SPEC.md`](./BUILD-SPEC.md): architecture, scenarios, hour budget, risk register, verification gate. Read it before writing code.
+- [`CLAUDE.md`](./CLAUDE.md): orientation for Claude Code sessions, including locked decisions, anti-patterns, cut list, copy guide.
 
 ## Licence
 
