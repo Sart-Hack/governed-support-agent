@@ -19,7 +19,7 @@ export function formatDecision(decision: PolicyDecision): FormattedDecision {
   if (decision.decision === "deny" && forbids.length > 0) {
     const primary = forbids[0]!;
     return {
-      summary: `Denied: ${subject} ${verb} on ${object} — forbidden by policy ${primary.policyId}${describe(primary)}.`,
+      summary: `Denied: ${subject} ${verb} on ${object} - forbidden by policy ${primary.policyId}${describe(primary)}.`,
       reasonLines: forbids.map((r) => reasonLine(r)),
       asiIds,
     };
@@ -27,7 +27,7 @@ export function formatDecision(decision: PolicyDecision): FormattedDecision {
 
   if (decision.decision === "deny") {
     return {
-      summary: `Denied: ${subject} ${verb} on ${object} — no policy permits this action (default deny).`,
+      summary: `Denied: ${subject} ${verb} on ${object} - no policy permits this action (default deny).`,
       reasonLines: [],
       asiIds: [],
     };
@@ -36,7 +36,7 @@ export function formatDecision(decision: PolicyDecision): FormattedDecision {
   if (permits.length > 0) {
     const primary = permits[0]!;
     return {
-      summary: `Allowed: ${subject} ${verb} on ${object} — policy ${primary.policyId}${describe(primary)}.`,
+      summary: `Allowed: ${subject} ${verb} on ${object} - policy ${primary.policyId}${describe(primary)}.`,
       reasonLines: permits.map((r) => reasonLine(r)),
       asiIds,
     };
@@ -49,9 +49,9 @@ export function formatDecision(decision: PolicyDecision): FormattedDecision {
   };
 }
 
-/** `asi — description` from a reason's annotations, dropping whichever is absent. */
+/** `asi - description` from a reason's annotations, dropping whichever is absent. */
 function annotationTail(reason: PolicyReason): string {
-  return [reason.annotations.asi, reason.annotations.description].filter(Boolean).join(" — ");
+  return [reason.annotations.asi, reason.annotations.description].filter(Boolean).join(" - ");
 }
 
 function describe(reason: PolicyReason): string {

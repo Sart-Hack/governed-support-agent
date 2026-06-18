@@ -1,12 +1,12 @@
 /**
- * Prompt-injection detector for UNTRUSTED retrieved content — KB pages, tool
- * results, scraped docs — scanned before it reaches a planner LLM.
+ * Prompt-injection detector for UNTRUSTED retrieved content - KB pages, tool
+ * results, scraped docs - scanned before it reaches a planner LLM.
  *
  * The defensible design is the data-vs-instructions boundary: content the agent
  * retrieves is DATA and must never be executed as INSTRUCTIONS. This scans for
  * the structural signatures of injected directives (instruction-override
  * phrasing, control-bypass, false authority, mass-action commands) generically
- * — it does not match any specific known payload.
+ * - it does not match any specific known payload.
  *
  * Maps to OWASP Agentic Top 10 ASI01 (Agent Goal Hijack).
  */
@@ -123,7 +123,7 @@ export function summarizeInjection(sources: ScannedSource[]): InjectionSummary {
   const ids = flagged.map((s) => s.source).join(", ");
   const labels = Array.from(new Set(flagged.flatMap((s) => s.scan.matches.map((m) => m.label))));
   return {
-    summary: `Quarantined: prompt-injection detected in retrieved content ${ids} — ${labels.join(
+    summary: `Quarantined: prompt-injection detected in retrieved content ${ids} - ${labels.join(
       " + ",
     )} (${INJECTION_ASI_ID} ${INJECTION_ASI_NAME}). Injected instructions were not executed.`,
     asiIds: [INJECTION_ASI_ID],

@@ -1,7 +1,7 @@
 // Generic PII redaction. This is the executable half of Cedar policy 03
 // (`responseTransform == "pii-redact"`): the policy permits a HubSpot read only
 // because agent-shield will run this transform on the response. Detection is by
-// shape, not by fixed values — any card-number- or SSN-shaped string is masked,
+// shape, not by fixed values - any card-number- or SSN-shaped string is masked,
 // so the same pass protects every account, not one scripted ticket.
 
 export interface Redaction {

@@ -53,7 +53,7 @@ export interface Shield {
 
 export function shield(config: ShieldConfig): Shield {
   // append() may be sync or return a Promise; void swallows both. We do not await
-  // it — auditing must never block or fail a step.
+  // it - auditing must never block or fail a step.
   const append = (event: AuditEvent): void => {
     void config.audit.append(event);
   };

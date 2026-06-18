@@ -27,7 +27,7 @@ export class AllowAllScopeCheck implements ScopeCheck {
  * Set-based scope check: the caller is granted a fixed set of scope tokens
  * (e.g. "zendesk:read", "notion:search"). A tool is permitted only when every
  * scope it declares in its MCP `_meta` is present in the grant. This is the
- * least-privilege enforcer behind the demo's scope-denial scenarios — the
+ * least-privilege enforcer behind the demo's scope-denial scenarios - the
  * agent's principal is granted read scopes but not, say, "hubspot:delete", so
  * an attempt to call a delete tool is denied before it ever reaches the server.
  */
