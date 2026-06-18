@@ -29,6 +29,11 @@ test-results
 evals/results/*.json
 !evals/results/.gitkeep
 
+# Python sidecar (InjecAgent eval) — uv-managed virtualenv + caches
+.venv/
+__pycache__/
+*.pyc
+
 postgres-data
 langfuse-data
 clickhouse-data

@@ -1,0 +1,9 @@
+[project]
+name = "gsa-injecagent-evals"
+version = "0.0.0"
+description = "InjecAgent subset runner for the Governed Support Ops Agent eval suite"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+package = false

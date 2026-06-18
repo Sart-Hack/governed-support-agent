@@ -19,7 +19,8 @@
       "pnpm-lock.yaml",
       "**/permissions-data.json",
       "**/tenants-data.json",
-      "**/refusals-data.json"
+      "**/refusals-data.json",
+      "evals/injecagent/cases.sample.json"
     ]
   },
   "formatter": {
