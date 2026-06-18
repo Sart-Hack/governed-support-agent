@@ -105,8 +105,18 @@ export class TracingAuditSink implements AuditSink {
         if (e.decision) {
           r.pendingDecision = e.decision;
           const step = this.currentStep(r);
-          if (step)
-            step.span.addEvent("policy.decision", decisionAttrs(e.decision, e.payload.tool));
+          if (step) {
+            const attrs = decisionAttrs(e.decision, e.payload.tool);
+            step.span.addEvent("policy.decision", attrs);
+            // A deny is terminal for this action: it is refused before dispatch, so
+            // no tool.call follows to carry the decision attributes onto a tool span.
+            // Pin them on the step span here so a refused action's reason chain
+            // (e.g. cross-tenant ASI06, delete ASI10) is queryable on the trace,
+            // not just inferable from the run-level refused flag.
+            if (e.decision.decision === "deny") {
+              for (const [k, v] of Object.entries(attrs)) step.span.setAttribute(k, v);
+            }
+          }
         }
         break;
       }

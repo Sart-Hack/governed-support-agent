@@ -28,6 +28,28 @@ function allowDecision(): PolicyDecision {
   };
 }
 
+function denyDecision(): PolicyDecision {
+  return {
+    decision: "deny",
+    reasons: [
+      {
+        policyId: "07-tenant-isolation",
+        effect: "forbid",
+        annotations: {
+          asi: "ASI06 Inter-Agent / Cross-Boundary",
+          description: "Cross-tenant access is denied.",
+        },
+      },
+    ],
+    errors: [],
+    request: {
+      principal: { type: "User", id: "alice" },
+      action: { type: "Action", id: "getAccount" },
+      resource: { type: "Account", id: "ACC-8" },
+    },
+  };
+}
+
 function makeTracer() {
   const exporter = new InMemorySpanExporter();
   const provider = new BasicTracerProvider({
@@ -108,6 +130,40 @@ describe("TracingAuditSink", () => {
     expect(llm?.attributes[GEN_AI.requestModel]).toBe("openai/gpt-4o-mini");
     expect(llm?.attributes[GEN_AI.usageInputTokens]).toBe(120);
     expect(llm?.attributes[GEN_AI.usageOutputTokens]).toBe(18);
+  });
+
+  it("pins a refused action's deny reason chain on the step span (no tool.call follows)", () => {
+    const { tracer, exporter } = makeTracer();
+    const sink = new TracingAuditSink(tracer);
+    // A cross-tenant getAccount denied at policy-check: the decision is audited,
+    // but the action is never dispatched, so there is no tool span to carry it.
+    const events: AuditEvent[] = [
+      ev("step.start", "policy-check"),
+      ev(
+        "policy.decision",
+        "policy-check",
+        { tool: "getAccount", decision: "deny" },
+        denyDecision(),
+      ),
+      ev("step.end", "policy-check"),
+      ev("run.summary", "audit", { ticketId: "TCK-8", refused: true }),
+    ];
+    for (const e of events) sink.append(e);
+    sink.finishRun(RUN);
+
+    const spans = exporter.getFinishedSpans();
+    const step = spans.find((s) => s.name === "policy-check");
+    expect(step?.attributes[AGENT.policyDecision]).toBe("deny");
+    expect((step?.attributes[AGENT.policyAsi] as string[]).some((a) => a.includes("ASI06"))).toBe(
+      true,
+    );
+    expect(
+      (step?.attributes[AGENT.policyReasons] as string[]).some((r) =>
+        r.includes("07-tenant-isolation"),
+      ),
+    ).toBe(true);
+    // The run-level refused flag still lands on the root.
+    expect(spans.find((s) => s.name === "support-ops")?.attributes[AGENT.refused]).toBe(true);
   });
 
   it("never throws on a malformed event", () => {
