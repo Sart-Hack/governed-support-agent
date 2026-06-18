@@ -51,7 +51,19 @@ describe("evals coverage", () => {
     }
   });
 
-  it("eval results are absent until the Phase 4 suite runs", () => {
-    expect(loadEvalResults()).toBeNull();
+  it("loadEvalResults returns null when absent, or a well-formed results object once the suite has run", () => {
+    // Phase 4 is shipped, so latest.json may or may not be present (it is gitignored:
+    // absent in a clean checkout, written by `pnpm eval` / CI before the microsite
+    // build). Either way the loader must honor its contract for the /evals page.
+    const r = loadEvalResults();
+    if (r === null) return; // absent: the page renders pending
+    expect(typeof r.generatedAt).toBe("string");
+    expect(Array.isArray(r.suites)).toBe(true);
+    for (const s of r.suites) {
+      expect(typeof s.suite).toBe("string");
+      expect(s.total).toBeGreaterThanOrEqual(0);
+      expect(s.passed).toBeGreaterThanOrEqual(0);
+      expect(s.passed).toBeLessThanOrEqual(s.total);
+    }
   });
 });

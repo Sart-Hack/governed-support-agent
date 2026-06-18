@@ -132,7 +132,8 @@ export const ASI_COVERAGE: AsiCoverage[] = [
 export type SuiteResult = { suite: string; passed: number; total: number };
 export type EvalResults = { generatedAt: string; suites: SuiteResult[] };
 
-// Optional: the Phase 4 CI artifact. Absent today, so the page renders pending.
+// The Phase 4 eval artifact. Gitignored, so absent in a clean checkout (the page
+// renders pending); written by `pnpm eval` / CI before the microsite build.
 export function loadEvalResults(): EvalResults | null {
   const candidates = [
     join(process.cwd(), "evals", "results", "latest.json"),
