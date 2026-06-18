@@ -17,23 +17,31 @@
 
 Both are pitched on the microsite: agent demo on `/`, `agent-shield` on `/shield`.
 
+## Why this isn't another chat demo
+
+Three things a chatbot wrapper does not do:
+
+- **Policy is code, in version control.** Every tool call is authorized against Cedar policies that live in [`packages/policies/`](./packages/policies/policies/), the exact files the microsite renders. A refusal comes back with a human-readable reason chain mapped to an OWASP Agentic threat, not a shrug.
+- **There is a kill-switch and a circuit breaker.** An operator can halt an in-flight run at the next step boundary, and a runaway loop trips a cost ceiling before it bills you for an overnight retry storm.
+- **Indirect prompt injection is handled, not hoped away.** Untrusted content the agent retrieves, like a poisoned knowledge-base page, is scanned and quarantined before it reaches the planner, so injected instructions never become actions.
+
 ## Status
 
-Phase 1 (foundation) complete. Phase 2 (agent core) complete: the agent runs end-to-end.
+Complete and runnable end-to-end. A Mastra v2 workflow wrapped by `agent-shield`
+takes a ticket through classify, retrieve, policy-check, human approval, governed
+execute, and audit, with a full OpenTelemetry trace tree in Langfuse.
 
-| Phase 2 milestone | Done |
+| Capability | State |
 |---|---|
-| `@sarthak/agent-shield`: Cedar evaluator, audit, kill-switch, scope-check, circuit-breaker | ✅ |
-| `@gsa/policies`: 8 Cedar policies mapped to OWASP ASI | ✅ |
-| `@gsa/fixtures`: tickets, Notion KB, HubSpot accounts | ✅ |
-| MCP servers: zendesk / notion / hubspot mocks + real-API github (full 2025-11-25 spec) | ✅ |
-| `@gsa/mcp-client`: governed client with scope-check + Bifrost bootstrap | ✅ |
-| Mastra v2 `support-ops` workflow wrapped by agent-shield | ✅ |
-| `@gsa/tracing`: OTel GenAI spans to Langfuse | ✅ |
-| Slack approval + suspend/resume on Postgres | ✅ |
-| Postgres kill-switch + circuit-breaker | ✅ |
+| 8 Cedar policies mapped to the OWASP Agentic Top 10 (ASI01-ASI10) | ✅ |
+| 8 scenarios fire end-to-end: allow, approval gate, PII redaction, delete refusal, indirect injection, cost breaker, kill-switch, cross-tenant | ✅ |
+| MCP servers: zendesk / notion / hubspot mocks + real-API GitHub (full 2025-11-25 spec) | ✅ |
+| Slack approval with suspend/resume on a Postgres checkpoint | ✅ |
+| OTel GenAI spans to Langfuse, `agent.policy.decision.reasons` on every governed step | ✅ |
+| Eval suite: custom 21/21, OWASP-ASI 10/10, InjecAgent subset 200/200 | ✅ |
+| Microsite: 11 routes, every page real (policies, traces, refusals, evals, shield, trust, tenants) | ✅ |
 
-Next up: Phase 3 (microsite pages, eval suite, rrweb recordings, launch). See [BUILD-SPEC.md](./BUILD-SPEC.md).
+See [BUILD-SPEC.md](./BUILD-SPEC.md) for the architecture and the verification gate.
 
 ## Run locally
 
@@ -114,6 +122,6 @@ Same commands run in `.github/workflows/ci.yml`. ~46s on a clean runner.
 - [`BUILD-SPEC.md`](./BUILD-SPEC.md): architecture, scenarios, hour budget, risk register, verification gate. Read it before writing code.
 - [`CLAUDE.md`](./CLAUDE.md): orientation for Claude Code sessions, including locked decisions, anti-patterns, cut list, copy guide.
 
-## Licence
+## License
 
 Apache 2.0. See [LICENSE](./LICENSE).
