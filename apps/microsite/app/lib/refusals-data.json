@@ -57,9 +57,9 @@
     "decision": "deny",
     "denialKind": "forbid",
     "formatted": {
-      "summary": "Denied: User::\"agent\" Action::\"deleteAccount\" on Account::\"ACC-5\" — forbidden by policy 06-delete-account-never (ASI10 Rogue Agents — Hard forbid on destructive deletion of customer records. This is the will-not-automate line per trust-system.md §1; no human-approval branch overrides it.).",
+      "summary": "Denied: User::\"agent\" Action::\"deleteAccount\" on Account::\"ACC-5\" - forbidden by policy 06-delete-account-never (ASI10 Rogue Agents - Hard forbid on destructive deletion of customer records. This is the will-not-automate line per trust-system.md §1; no human-approval branch overrides it.).",
       "reasonLines": [
-        "[FORBID] 06-delete-account-never: ASI10 Rogue Agents — Hard forbid on destructive deletion of customer records. This is the will-not-automate line per trust-system.md §1; no human-approval branch overrides it."
+        "[FORBID] 06-delete-account-never: ASI10 Rogue Agents - Hard forbid on destructive deletion of customer records. This is the will-not-automate line per trust-system.md §1; no human-approval branch overrides it."
       ],
       "asiIds": [
         "ASI10 Rogue Agents"
@@ -117,7 +117,7 @@
     "decision": "deny",
     "denialKind": "default-deny",
     "formatted": {
-      "summary": "Denied: User::\"agent\" Action::\"getPage\" on KBPage::\"NTP-INT-1\" — no policy permits this action (default deny).",
+      "summary": "Denied: User::\"agent\" Action::\"getPage\" on KBPage::\"NTP-INT-1\" - no policy permits this action (default deny).",
       "reasonLines": [],
       "asiIds": []
     }
@@ -173,7 +173,7 @@
     "decision": "deny",
     "denialKind": "default-deny",
     "formatted": {
-      "summary": "Denied: User::\"agent\" Action::\"getAccount\" on Account::\"ACC-PII-1\" — no policy permits this action (default deny).",
+      "summary": "Denied: User::\"agent\" Action::\"getAccount\" on Account::\"ACC-PII-1\" - no policy permits this action (default deny).",
       "reasonLines": [],
       "asiIds": []
     }
@@ -229,9 +229,9 @@
     "decision": "deny",
     "denialKind": "forbid",
     "formatted": {
-      "summary": "Denied: User::\"agent\" Action::\"getAccount\" on Account::\"ACC-8\" — forbidden by policy 07-tenant-isolation (ASI06 Inter-Agent / Cross-Boundary — Cross-tenant access is denied. A principal may only act on resources within its own tenant; principal.tenant must equal resource.tenant.).",
+      "summary": "Denied: User::\"agent\" Action::\"getAccount\" on Account::\"ACC-8\" - forbidden by policy 07-tenant-isolation (ASI06 Inter-Agent / Cross-Boundary - Cross-tenant access is denied. A principal may only act on resources within its own tenant; principal.tenant must equal resource.tenant.).",
       "reasonLines": [
-        "[FORBID] 07-tenant-isolation: ASI06 Inter-Agent / Cross-Boundary — Cross-tenant access is denied. A principal may only act on resources within its own tenant; principal.tenant must equal resource.tenant."
+        "[FORBID] 07-tenant-isolation: ASI06 Inter-Agent / Cross-Boundary - Cross-tenant access is denied. A principal may only act on resources within its own tenant; principal.tenant must equal resource.tenant."
       ],
       "asiIds": [
         "ASI06 Inter-Agent / Cross-Boundary"

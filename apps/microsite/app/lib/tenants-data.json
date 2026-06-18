@@ -14,9 +14,9 @@
       "action": "getAccount",
       "decision": "allow",
       "formatted": {
-        "summary": "Allowed: User::\"agent\" Action::\"getAccount\" on Account::\"ACC-1\" — policy 03-hubspot-pii-redacted (ASI04 Data Exfiltration — HubSpot account and contact reads are permitted only when agent-shield will apply PII redaction to the response. Mitigates leakage of PII into LLM context or downstream tool calls.).",
+        "summary": "Allowed: User::\"agent\" Action::\"getAccount\" on Account::\"ACC-1\" - policy 03-hubspot-pii-redacted (ASI04 Data Exfiltration - HubSpot account and contact reads are permitted only when agent-shield will apply PII redaction to the response. Mitigates leakage of PII into LLM context or downstream tool calls.).",
         "reasonLines": [
-          "[PERMIT] 03-hubspot-pii-redacted: ASI04 Data Exfiltration — HubSpot account and contact reads are permitted only when agent-shield will apply PII redaction to the response. Mitigates leakage of PII into LLM context or downstream tool calls."
+          "[PERMIT] 03-hubspot-pii-redacted: ASI04 Data Exfiltration - HubSpot account and contact reads are permitted only when agent-shield will apply PII redaction to the response. Mitigates leakage of PII into LLM context or downstream tool calls."
         ],
         "asiIds": [
           "ASI04 Data Exfiltration"
@@ -36,9 +36,9 @@
       "action": "getAccount",
       "decision": "deny",
       "formatted": {
-        "summary": "Denied: User::\"agent\" Action::\"getAccount\" on Account::\"ACC-8\" — forbidden by policy 07-tenant-isolation (ASI06 Inter-Agent / Cross-Boundary — Cross-tenant access is denied. A principal may only act on resources within its own tenant; principal.tenant must equal resource.tenant.).",
+        "summary": "Denied: User::\"agent\" Action::\"getAccount\" on Account::\"ACC-8\" - forbidden by policy 07-tenant-isolation (ASI06 Inter-Agent / Cross-Boundary - Cross-tenant access is denied. A principal may only act on resources within its own tenant; principal.tenant must equal resource.tenant.).",
         "reasonLines": [
-          "[FORBID] 07-tenant-isolation: ASI06 Inter-Agent / Cross-Boundary — Cross-tenant access is denied. A principal may only act on resources within its own tenant; principal.tenant must equal resource.tenant."
+          "[FORBID] 07-tenant-isolation: ASI06 Inter-Agent / Cross-Boundary - Cross-tenant access is denied. A principal may only act on resources within its own tenant; principal.tenant must equal resource.tenant."
         ],
         "asiIds": [
           "ASI06 Inter-Agent / Cross-Boundary"
