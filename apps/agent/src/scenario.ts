@@ -93,6 +93,12 @@ function printOutcome(state: RunState): void {
       `  redaction : ${r.surface} ${r.transform} → ${r.items.join(", ")} [${r.asiIds.join(", ")}]`,
     );
   }
+  for (const j of state.policy?.judgements ?? []) {
+    if (j.disposition === "refuse") {
+      const asi = j.asiIds.length > 0 ? ` [${j.asiIds.join(", ")}]` : "";
+      console.log(`  refused   : ${j.tool} — ${j.reason}${asi}`);
+    }
+  }
   console.log(`  approval  : ${state.approval?.state}`);
   console.log(`  revised   : ${state.execution?.revised ?? false}`);
   console.log(

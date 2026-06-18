@@ -1,3 +1,4 @@
+import { HUBSPOT_ACCOUNTS } from "@gsa/fixtures";
 import { McpClientPool, defaultMcpTargets } from "@gsa/mcp-client";
 import { loadDefaultPolicies } from "@gsa/policies";
 import {
@@ -69,11 +70,20 @@ export function toPolicyRequest(
   args: Record<string, unknown>,
   runCtx: RunContext = {},
 ): PolicyEvaluationRequest {
-  const tenant = runCtx.tenant ?? AGENT_TENANT;
+  const principalTenant = runCtx.tenant ?? AGENT_TENANT;
   const resourceType = RESOURCE_TYPE[server] ?? "Resource";
   const resourceId = resourceIdFor(server, args);
 
-  const resourceAttrs: Record<string, unknown> = { tenant };
+  // The resource's tenant. For a HubSpot account it is the account's own tenant
+  // (from the fixtures), so reading another tenant's account trips policy 07
+  // (ASI06 tenant isolation) at runtime. Every other resource in this single-
+  // tenant demo surface shares the agent's tenant, so the check is a no-op there.
+  const resourceTenant =
+    server === "hubspot"
+      ? (HUBSPOT_ACCOUNTS.find((a) => a.id === resourceId)?.tenant ?? principalTenant)
+      : principalTenant;
+
+  const resourceAttrs: Record<string, unknown> = { tenant: resourceTenant };
   const context: Record<string, unknown> = {};
 
   if (server === "notion") {
@@ -99,7 +109,7 @@ export function toPolicyRequest(
     resource: { type: resourceType, id: resourceId },
     context,
     entities: [
-      { uid: AGENT_PRINCIPAL, attrs: { tenant }, parents: AGENT_ROLES },
+      { uid: AGENT_PRINCIPAL, attrs: { tenant: principalTenant }, parents: AGENT_ROLES },
       { uid: { type: resourceType, id: resourceId }, attrs: resourceAttrs, parents: [] },
     ],
   };

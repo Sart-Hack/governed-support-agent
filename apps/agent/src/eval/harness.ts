@@ -32,21 +32,13 @@ export function decide(
 }
 
 /**
- * A cross-tenant request: a tenant-A principal reaching a tenant-B resource.
- * toPolicyRequest aligns both tenants by design, so the mismatch is built by
- * hand here to exercise policy 07 (ASI06).
+ * A cross-tenant request through the real authorization path: the tenant-A agent
+ * reads ACC-8, a tenant-B account. toPolicyRequest resolves the resource's tenant
+ * from the fixtures, so policy 07 (ASI06) denies the crossing exactly as it does
+ * at runtime — no hand-built entities.
  */
 export function decideCrossTenant(): "allow" | "deny" {
-  return evaluate(POLICIES, {
-    principal: AGENT_PRINCIPAL,
-    action: { type: "Action", id: "getAccount" },
-    resource: { type: "Account", id: "ACC-1" },
-    context: { responseTransform: "pii-redact" },
-    entities: [
-      { uid: AGENT_PRINCIPAL, attrs: { tenant: "tenant-A" }, parents: AGENT_ROLES },
-      { uid: { type: "Account", id: "ACC-1" }, attrs: { tenant: "tenant-B" }, parents: [] },
-    ],
-  }).decision;
+  return decide("hubspot", "getAccount", { accountId: "ACC-8" });
 }
 
 /**

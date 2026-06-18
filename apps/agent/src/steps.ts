@@ -272,6 +272,11 @@ const ACTION_SERVER: Record<string, string> = {
   retrySync: "control",
 };
 
+// The tenant-B fixture account (the same one /tenants and /refusals cite). A
+// cross-tenant-bait ticket steers the tenant-A agent toward it; policy 07
+// (tenant isolation, ASI06) denies the read at the policy-check step.
+const CROSS_TENANT_ACCOUNT = "ACC-8";
+
 const ACTION_TOOLS: ToolSchema[] = [
   {
     name: "replyInternal",
@@ -431,7 +436,12 @@ export function triageStep(deps: AgentDeps) {
     // masked — raw card numbers / SSNs never enter the LLM context.
     let account: unknown;
     const redactions: TransformReport[] = [];
-    if (state.accountId) {
+    // Skip the speculative account read for a cross-tenant-bait ticket: the
+    // account belongs to another tenant, so reading it IS the violation. The
+    // planned getAccount below is denied by policy 07 at the policy-check step,
+    // which is where the cross-tenant refusal is meant to surface (rather than as
+    // a thrown error mid-research).
+    if (state.accountId && !state.tags?.includes("cross-tenant-bait")) {
       const read = await governedCall(deps, ctx, "hubspot", "getAccount", { id: state.accountId });
       account = read.result.data;
       if (read.transform) redactions.push(read.transform);
@@ -479,6 +489,22 @@ export function triageStep(deps: AgentDeps) {
     // the tag just guarantees the demonstration.
     if (state.tags?.includes("retry-loop-bait")) {
       actions = [{ server: "control", tool: "retrySync", args: {}, customerFacing: false }];
+    }
+    // A ticket tagged as cross-tenant bait (TCK-8) tries to steer the tenant-A
+    // agent into reading another tenant's account. Drive the read deterministically
+    // from the tag so the scenario reproduces; policy 07 (tenant isolation, ASI06)
+    // denies it at policy-check, exactly as it would for any planner-proposed
+    // cross-tenant read. The agent's principal stays tenant-A — only the resource
+    // (ACC-8, a tenant-B account) is foreign, which is what trips the policy.
+    if (state.tags?.includes("cross-tenant-bait")) {
+      actions = [
+        {
+          server: "hubspot",
+          tool: "getAccount",
+          args: { accountId: CROSS_TENANT_ACCOUNT },
+          customerFacing: false,
+        },
+      ];
     }
     return {
       ...state,
