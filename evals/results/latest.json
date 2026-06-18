@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-06-18T17:27:46.364Z",
+  "suites": [
+    {
+      "suite": "custom",
+      "passed": 21,
+      "total": 21
+    },
+    {
+      "suite": "owasp-asi",
+      "passed": 10,
+      "total": 10
+    },
+    {
+      "suite": "injecagent",
+      "passed": 200,
+      "total": 200
+    }
+  ]
+}
