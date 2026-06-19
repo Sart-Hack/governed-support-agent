@@ -19,6 +19,10 @@
 
 Both are pitched on the microsite ([demo.sarthak-gupta.com](https://demo.sarthak-gupta.com)): agent demo on `/`, `agent-shield` on `/shield`.
 
+![The agent proposes deleting a customer account; Cedar hard-forbids it and returns the reason chain.](./docs/media/hero-refusal.gif)
+
+> A customer asks the agent to delete their account. The agent plans `deleteAccount(ACC-5)`, agent-shield evaluates it against Cedar before any call leaves the process, and policy 06 hard-forbids it with a reason chain mapped to OWASP ASI10. Replay this and three more on [`/refusals`](https://demo.sarthak-gupta.com/refusals).
+
 ## Why this isn't another chat demo
 
 Three things a chatbot wrapper does not do:
@@ -26,6 +30,10 @@ Three things a chatbot wrapper does not do:
 - **Policy is code, in version control.** Every tool call is authorized against Cedar policies that live in [`packages/policies/`](./packages/policies/policies/), the exact files the microsite renders. A refusal comes back with a human-readable reason chain mapped to an OWASP Agentic threat, not a shrug.
 - **There is a kill-switch and a circuit breaker.** An operator can halt an in-flight run at the next step boundary, and a runaway loop trips a cost ceiling before it bills you for an overnight retry storm.
 - **Indirect prompt injection is handled, not hoped away.** Untrusted content the agent retrieves, like a poisoned knowledge-base page, is scanned and quarantined before it reaches the planner, so injected instructions never become actions.
+
+![A runaway sub-goal loop billing the model each iteration; the circuit breaker halts the run at the $0.50 ceiling.](./docs/media/traces-cost-ceiling.png)
+
+The cost overlay from [`/traces`](https://demo.sarthak-gupta.com/traces/scenario-2): a runaway loop bills a model call each iteration, and the circuit breaker halts the run the moment cumulative cost crosses $0.50.
 
 ## Architecture
 
