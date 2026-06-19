@@ -19,6 +19,18 @@ This project explicitly does **not** use:
 
 All package versions are pinned in `pnpm-lock.yaml`. Docker images are pinned to specific tags (e.g. `postgres:17`, `langfuse/langfuse:3`, `maximhq/bifrost:v1.5.5`). Run `pnpm audit --prod` and `osv-scanner` before any release.
 
+## Audit posture
+
+`pnpm audit --prod` is clean of **critical** advisories. The two that previously surfaced (a Next.js RCE and a middleware auth-bypass) were cleared by bumping Next.js to 15.5.19. The remaining advisories are all **transitive framework dependencies** with no path through this project's own code, and none are reachable in a static plus local-only demo:
+
+- `form-data` (via `@slack/bolt`)
+- `hono` x5 (via `@mastra/core`)
+- `postcss` (via Next.js)
+- `js-yaml`, `protobufjs`, `@opentelemetry/core` (via Mastra and OTel)
+- `@ai-sdk/provider-utils`
+
+These are tracked and revisited on framework updates rather than forced via `pnpm` overrides, since pinning a transitive dependency ahead of its parent framework carries more breakage risk than the advisories carry exposure in this demo's threat model. The MCP servers, Cedar evaluation, and agent runtime do not call into the affected code paths.
+
 ## Scope
 
 In scope:
