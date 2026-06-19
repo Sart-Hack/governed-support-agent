@@ -1,6 +1,7 @@
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import { AuditStrip } from "./components/audit-strip";
+import { Footer } from "./components/footer";
 import { Nav } from "./components/nav";
 import { siteMetadata } from "./metadata";
 import "./globals.css";
@@ -20,6 +21,7 @@ export default function RootLayout({
           <div className="flex min-w-0 flex-1 flex-col">
             <AuditStrip />
             <main className="flex-1">{children}</main>
+            <Footer />
           </div>
         </div>
       </body>
