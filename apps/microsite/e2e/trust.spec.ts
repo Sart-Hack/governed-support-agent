@@ -15,6 +15,9 @@ test("trust page lists policy-enforced boundaries, model facts, and an honest ev
   await expect(page.getByText("openai/gpt-4o-mini (via Bifrost)")).toBeVisible();
   await expect(page.getByText("$0.50 (circuit breaker)")).toBeVisible();
 
-  // Evals are honestly marked as not yet measured (no placeholder number).
-  await expect(page.getByText(/lands in Phase 4/)).toBeVisible();
+  // Evals render the real committed suite results (data-driven from latest.json),
+  // each labelled with its target, and link out to the per-ID coverage.
+  await expect(page.getByText("Custom suite")).toBeVisible();
+  await expect(page.getByText("OWASP-ASI assertions")).toBeVisible();
+  await expect(page.getByRole("link", { name: "evals page" })).toBeVisible();
 });

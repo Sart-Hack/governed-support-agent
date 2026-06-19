@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { PageShell } from "../components/page-shell";
+import { SUITES, loadEvalResults } from "../lib/evals";
 
 // Every boundary below is enforced by a named Cedar policy in this repo, not a
 // promise. The policy file and its OWASP-ASI mapping are listed so the claim is
@@ -35,6 +37,7 @@ const MODEL_FACTS = [
 ];
 
 export default function TrustPage() {
+  const evals = loadEvalResults();
   return (
     <PageShell
       eyebrow="Disclosure"
@@ -88,14 +91,50 @@ export default function TrustPage() {
 
       <section className="mt-10">
         <p className="font-mono text-xs uppercase tracking-widest text-text-secondary">Evals</p>
-        <div className="mt-4 rounded-lg border border-border bg-card/40 p-5">
-          <p className="text-sm text-text-secondary">
-            The public eval suite (InjecAgent, a custom set, and OWASP-ASI assertions) lands in
-            Phase 4. Targets are custom at or above 90%, InjecAgent at or above 80%, and 10 of 10
-            ASI assertions. No pass rate is shown here until the suite runs in CI; a placeholder
-            number would defeat the point of this page.
-          </p>
-        </div>
+        {evals ? (
+          <>
+            <dl className="mt-4 overflow-hidden rounded-lg border border-border">
+              {SUITES.map((suite, i) => {
+                const result = evals.suites.find((s) => s.suite === suite.key);
+                return (
+                  <div
+                    key={suite.key}
+                    className={`flex flex-col gap-1 px-4 py-3 sm:flex-row sm:justify-between ${
+                      i > 0 ? "border-t border-border" : ""
+                    }`}
+                  >
+                    <dt className="text-sm text-text-secondary">
+                      {suite.name}{" "}
+                      <span className="font-mono text-xs text-text-secondary/70">
+                        ({suite.target})
+                      </span>
+                    </dt>
+                    <dd className="font-mono text-sm text-text-primary">
+                      {result ? `${result.passed} / ${result.total}` : "pending"}
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
+            <p className="mt-3 text-sm text-text-secondary">
+              Run offline and deterministic via <code className="font-mono">pnpm eval</code>, gated
+              in CI before the microsite build. Per-ID coverage is on the{" "}
+              <Link href="/evals" className="text-info hover:underline">
+                evals page
+              </Link>
+              .
+            </p>
+          </>
+        ) : (
+          <div className="mt-4 rounded-lg border border-border bg-card/40 p-5">
+            <p className="text-sm text-text-secondary">
+              The public eval suite (InjecAgent, a custom set, and OWASP-ASI assertions) runs
+              offline via <code className="font-mono">pnpm eval</code>. Targets are custom at or
+              above 90%, InjecAgent at or above 80%, and 10 of 10 ASI assertions. No pass rate is
+              shown until the suite runs; a placeholder number would defeat the point of this page.
+            </p>
+          </div>
+        )}
       </section>
     </PageShell>
   );

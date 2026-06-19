@@ -7,6 +7,8 @@
 [![license](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](./LICENSE)
 [![mcp](https://img.shields.io/badge/MCP-2025--11--25-8B5CF6.svg)](https://modelcontextprotocol.io)
 
+**Live microsite: [demo.sarthak-gupta.com](https://demo.sarthak-gupta.com)**
+
 ---
 
 ## Two artifacts in one repo
@@ -15,7 +17,7 @@
 
 2. **`@sarthak/agent-shield`.** The governance layer pulled out as a reusable package: Cedar policies + append-only audit log + kill-switch + MCP scope check + circuit breaker. Public API: `shield({ policies, audit, killSwitch, scopeCheck, breaker }).wrap(workflow)`.
 
-Both are pitched on the microsite: agent demo on `/`, `agent-shield` on `/shield`.
+Both are pitched on the microsite ([demo.sarthak-gupta.com](https://demo.sarthak-gupta.com)): agent demo on `/`, `agent-shield` on `/shield`.
 
 ## Why this isn't another chat demo
 
