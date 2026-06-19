@@ -36,7 +36,7 @@ export default function RunPage() {
     <PageShell
       eyebrow="Reference"
       title="Clone and run"
-      intro="The whole stack runs on your machine: clone, bring up the containers, play scenario one end to end. There is no live LLM endpoint to deploy; the deployed demo replays recorded runs."
+      intro="The whole stack runs on your machine: clone, bring up the containers, play scenario one end to end. There is no live LLM endpoint in the deployed site; the agent runs here, and the deployed pages render captured traces and live Cedar decisions from those runs."
     >
       <ol className="space-y-8">
         {STEPS.map((step) => (

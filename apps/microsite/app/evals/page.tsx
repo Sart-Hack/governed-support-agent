@@ -10,7 +10,7 @@ export default function EvalsPage() {
     <PageShell
       eyebrow="Governance"
       title="Evals"
-      intro="Three suites keep the policies honest: a scenario-derived custom suite, an InjecAgent injection subset, and one assertion per OWASP Agentic Top 10 ID. Pass rates appear here once the suite runs in CI; until then this page shows the targets and the coverage map, not a placeholder number."
+      intro="Three suites keep the policies honest: a scenario-derived custom suite, an InjecAgent injection subset, and one assertion per OWASP Agentic Top 10 ID. They run offline and deterministic via pnpm eval, gated in CI before this site builds; the pass rates and coverage map below come straight from that run."
     >
       <section>
         <div className="grid gap-4 md:grid-cols-3">
@@ -31,7 +31,7 @@ export default function EvalsPage() {
                       {r.passed}/{r.total} pass
                     </span>
                   ) : (
-                    <span className="text-text-secondary/70">pending · runs in Phase 4 CI</span>
+                    <span className="text-text-secondary/70">pending · run pnpm eval</span>
                   )}
                 </p>
               </div>
