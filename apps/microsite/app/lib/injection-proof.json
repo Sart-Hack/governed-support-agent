@@ -1,0 +1,15 @@
+{
+  "pageId": "NTP-KB-5",
+  "pageTitle": "Migration playbook",
+  "detected": true,
+  "score": 10,
+  "threshold": 3,
+  "signatures": [
+    "instruction-override",
+    "control-bypass",
+    "false-authority",
+    "mass-action-directive"
+  ],
+  "asi": "ASI01 Agent Goal Hijack",
+  "summary": "Quarantined: prompt-injection detected in retrieved content NTP-KB-5 - instruction-override + control-bypass + false-authority + mass-action-directive (ASI01 Agent Goal Hijack). Injected instructions were not executed."
+}

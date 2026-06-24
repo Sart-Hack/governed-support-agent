@@ -1,6 +1,6 @@
 # Governed Support Ops Agent
 
-> **AI agents your security team will actually approve.** For US tech companies past Series A that need agents, not chatbots.
+> A reference build for governing what an AI agent is allowed to do: deterministic, policy-as-code authorization on every tool call, checked before the action runs and logged after. Not output guardrails.
 
 [![ci](https://github.com/Sart-Hack/governed-support-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Sart-Hack/governed-support-agent/actions/workflows/ci.yml)
 [![evals](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Sart-Hack/governed-support-agent/main/evals/results/badge.json)](./apps/agent/src/eval)
@@ -11,29 +11,37 @@
 
 ---
 
-## Two artifacts in one repo
+Most "agent safety" filters what the model says. This governs what the agent is allowed to do. Every tool call (a refund, a deletion, an account change) is checked against policy-as-code that runs outside the model, returns a deterministic allow or deny, routes destructive actions to a human, and writes a record you can replay.
 
-1. **The Governed Support Ops Agent.** A runnable, end-to-end demo: watches a simulated Zendesk queue, reads Notion docs, checks HubSpot, files real GitHub issues, posts Slack updates, and requires human approval before any customer-facing action.
-
-2. **`@sarthak/agent-shield`.** The governance layer pulled out as a reusable package: Cedar policies + append-only audit log + kill-switch + MCP scope check + circuit breaker. Public API: `shield({ policies, audit, killSwitch, scopeCheck, breaker }).wrap(workflow)`.
-
-Both are pitched on the microsite ([demo.sarthak-gupta.com](https://demo.sarthak-gupta.com)): agent demo on `/`, `agent-shield` on `/shield`.
+It's a runnable reference build, not a product to install. The agent works a simulated support queue end to end: reads Notion, checks HubSpot, files GitHub issues, posts to Slack, and stops at a human gate before anything customer-facing. The Cedar policies, the eval suite that proves each one fires, and the audit log are all here to read and diff.
 
 ![The agent proposes deleting a customer account; Cedar hard-forbids it and returns the reason chain.](./docs/media/hero-refusal.gif)
 
 > A customer asks the agent to delete their account. The agent plans `deleteAccount(ACC-5)`, agent-shield evaluates it against Cedar before any call leaves the process, and policy 06 hard-forbids it with a reason chain mapped to OWASP ASI10. Replay this and three more on [`/refusals`](https://demo.sarthak-gupta.com/refusals).
 
+## Isn't this just guardrails?
+
+Guardrails filter the model's text output and lean probabilistic. This authorizes the agent's actions. The check runs outside the model, returns a deterministic allow or deny on the specific call and its inputs, and leaves a record. Guardrails are one layer. This is the layer that decides whether the action happens at all.
+
 ## Why this isn't another chat demo
 
 Three things a chatbot wrapper does not do:
 
-- **Policy is code, in version control.** Every tool call is authorized against Cedar policies that live in [`packages/policies/`](./packages/policies/policies/), the exact files the microsite renders. A refusal comes back with a human-readable reason chain mapped to an OWASP Agentic threat, not a shrug.
+- **A policy decision point authorizes every action.** Each tool call is checked against Cedar policies in [`packages/policies/`](./packages/policies/policies/) (the exact files the microsite renders) by a decision point that runs outside the model and returns a deterministic allow or deny. A deny comes back with a human-readable reason chain mapped to an OWASP Agentic threat, not a shrug.
 - **There is a kill-switch and a circuit breaker.** An operator can halt an in-flight run at the next step boundary, and a runaway loop trips a cost ceiling before it bills you for an overnight retry storm.
 - **Indirect prompt injection is handled, not hoped away.** Untrusted content the agent retrieves, like a poisoned knowledge-base page, is scanned and quarantined before it reaches the planner, so injected instructions never become actions.
 
 ![A runaway sub-goal loop billing the model each iteration; the circuit breaker halts the run at the $0.50 ceiling.](./docs/media/traces-cost-ceiling.png)
 
 The cost overlay from [`/traces`](https://demo.sarthak-gupta.com/traces/scenario-2): a runaway loop bills a model call each iteration, and the circuit breaker halts the run the moment cumulative cost crosses $0.50.
+
+## Two artifacts in one repo
+
+1. **The Governed Support Ops Agent.** A runnable, end-to-end demo: watches a simulated Zendesk queue, reads Notion docs, checks HubSpot, files real GitHub issues, posts Slack updates, and requires human approval before any customer-facing action.
+
+2. **`@sarthak/agent-shield`.** The governance layer extracted from the demo as a standalone reference: Cedar policies + append-only audit log + kill-switch + MCP scope check + circuit breaker, behind one public API: `shield({ policies, audit, killSwitch, scopeCheck, breaker }).wrap(workflow)`. The agent in this repo is its reference integration.
+
+Both are shown on the microsite ([demo.sarthak-gupta.com](https://demo.sarthak-gupta.com)): agent demo on `/`, `agent-shield` on `/shield`.
 
 ## Architecture
 
@@ -61,8 +69,10 @@ page, sourced from [`app/lib/architecture.ts`](./apps/microsite/app/lib/architec
 ## Status
 
 Complete and runnable end-to-end. A Mastra v2 workflow wrapped by `agent-shield`
-takes a ticket through classify, retrieve, policy-check, human approval, governed
-execute, and audit, with a full OpenTelemetry trace tree in Langfuse.
+(the policy decision point) takes a ticket through classify, retrieve, policy-check,
+human approval, governed execute, and audit. Every governed tool call gets a
+deterministic allow or deny before it runs, with a full OpenTelemetry trace tree in
+Langfuse.
 
 | Capability | State |
 |---|---|
